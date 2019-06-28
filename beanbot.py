@@ -1,93 +1,215 @@
 #!/usr/bin/env python
 
+import datetime
+import decimal
+import itertools
 import logging
 import os
+import re
 
-from telegram import ReplyKeyboardMarkup
-from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
-                          ConversationHandler)
+from telegram import (ReplyKeyboardMarkup, InlineKeyboardButton,
+                      InlineKeyboardMarkup)
+from telegram.ext import (Updater, CommandHandler, MessageHandler,
+                          Filters, RegexHandler, ConversationHandler,
+                          CallbackQueryHandler)
+
+
 # Token
 TOKEN = os.environ.get('BOT_TOKEN')
 
-# Enable logging
+
+# Logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 
-reply_keyboard = [['Age', 'Favourite colour'],
-                  ['Number of siblings', 'Something else...'],
-                  ['Done']]
-markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+# Models
+def create_new_transaction(**kwargs):
+    transaction = {
+        'date': datetime.date.today(),
+        'info': '',
+        'payee': '',
+        'flag': '*',
+        'currency': 'PEN',
+        'account_1': 'Expenses:Stuff',
+        'amount': decimal.Decimal(0),
+        'account_2': 'Assets:Cash',
+    }
+    transaction.update(kwargs)
+    return transaction
 
 
-def facts_to_str(user_data):
-    facts = list()
+def parse_message_transaction(text):
+    *info, amount, currency = text.split()
 
-    for key, value in user_data.items():
-        facts.append('{} - {}'.format(key, value))
+    return create_new_transaction(
+        info=' '.join(info),
+        amount=decimal.Decimal(amount),
+        currency=currency,
+    )
 
-    return "\n".join(facts).join(['\n', '\n'])
+
+class Default:
+    payee = ['Metro', 'Sr. Roos', 'Grocery store', 'Restaurant', 'La Panetteria']
+
+
+# Utils
+def make_main_inline_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton('Payee', callback_data='payee'),
+         InlineKeyboardButton('Info', callback_data='info')],
+        [InlineKeyboardButton('Asset', callback_data='account_1'),
+         InlineKeyboardButton('Expense', callback_data='account_2')],
+        [InlineKeyboardButton('Done!', callback_data='done')]
+    ])
+
+
+class KeyboardFactory:
+    @staticmethod
+    def _make_2x3_keyboard(labels, data):
+        pairs = zip(labels, data)
+        cols = 2
+        rows = len(data) // 2 + len(data) % 2
+
+        # return [
+        #     [InlineKeyboardButton(*pair)
+        #      for pair in itertools.islice(pairs, start, start + cols)]
+        #     for start in range(rows)
+        # ]
+
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton(labels[0], callback_data=data[0]),
+             InlineKeyboardButton(labels[1], callback_data=data[1])],
+            [InlineKeyboardButton(labels[2], callback_data=data[2]),
+             InlineKeyboardButton(labels[3], callback_data=data[3])],
+            [InlineKeyboardButton(labels[4], callback_data=data[4]),
+             InlineKeyboardButton(labels[5], callback_data=data[5])],
+        ])
+
+    @staticmethod
+    def get_kb_for_payee():
+        data = ['payee_{}'.format(i) for i in range(len(Default.payee))]
+        return KeyboardFactory._make_2x3_keyboard(
+            (*Default.payee, '« Back'), (*data, 'go_back'))
+
+
+# States
+WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA = range(3)
+
+
+def format_transaction(transaction):
+    return ("{date} {flag} {payee} {info}\n"
+            "    {account_1}    {amount} {currency}\n"
+            "    {account_2}").format(
+                **transaction
+            )
 
 
 def start(update, context):
     update.message.reply_text(
-        "Hi! My name is Doctor Botter. I will hold a more complex conversation with you. "
-        "Why don't you tell me something about yourself?",
-        reply_markup=markup)
+        "Hi! I'm BeanBot. Help will go here, but it hasn't been written yet.",
+    )
 
-    return CHOOSING
-
-
-def regular_choice(update, context):
-    text = update.message.text
-    context.user_data['choice'] = text
-    update.message.reply_text(
-        'Your {}? Yes, I would love to hear about that!'.format(text.lower()))
-
-    return TYPING_REPLY
+    return WAITING_TRANSACTION
 
 
-def custom_choice(update, context):
-    update.message.reply_text('Alright, please send me the category first, '
-                              'for example "Most impressive skill"')
+def register_transaction(update, context):
+    try:
+        transaction = parse_message_transaction(update.message.text)
+    except Exception as ex:
+        update.message.reply_text("I couldn't understand that "
+                                  "because {}".format(ex))
+        logger.exception(ex)
+        return WAITING_TRANSACTION
 
-    return TYPING_CHOICE
+    inline_keyboard = make_main_inline_keyboard()
+    formatted_transaction = format_transaction(transaction)
 
+    context.user_data['current_transaction'] = transaction
 
-def received_information(update, context):
-    user_data = context.user_data
-    text = update.message.text
-    category = user_data['choice']
-    user_data[category] = text
-    del user_data['choice']
+    update.message.reply_text(formatted_transaction,
+                              reply_markup=inline_keyboard)
 
-    update.message.reply_text("Neat! Just so you know, this is what you already told me:"
-                              "{}"
-                              "You can tell me more, or change your opinion on something.".format(
-                                  facts_to_str(user_data)), reply_markup=markup)
-
-    return CHOOSING
+    return SELECTING_FIELD
 
 
-def done(update, context):
-    user_data = context.user_data
-    if 'choice' in user_data:
-        del user_data['choice']
+def selecting_field(update, context):
+    button = update.callback_query.data
+    current_transaction = context.user_data['current_transaction']
 
-    update.message.reply_text("I learned these facts about you:"
-                              "{}"
-                              "Until next time!".format(facts_to_str(user_data)))
+    if button == 'done':  # commit transaction
+        transaction_list = context.user_data.setdefault('transaction_list', [])
 
-    user_data.clear()
-    return ConversationHandler.END
+        transaction_list.append(current_transaction)
+
+        del context.user_data['current_transaction']
+
+        update.callback_query.edit_message_reply_markup(
+            InlineKeyboardMarkup(
+                [[InlineKeyboardButton('Edit', callback_data='edit')]]
+            )
+        )
+
+        update.callback_query.answer('Saved!')
+
+        return WAITING_TRANSACTION
+
+    current_transaction[button] = '[{}]'.format(button.title())
+
+    context.user_data['field'] = button
+
+    update.callback_query.edit_message_text(
+        format_transaction(current_transaction)
+    )
+
+    method_name = f'get_kb_for_{button}'
+    method = getattr(KeyboardFactory, method_name, None)
+    keyboard = method and method()
+
+    if keyboard is not None:
+        update.callback_query.edit_message_reply_markup(
+            keyboard
+        )
+
+    update.callback_query.answer('Select one option')
+
+    return FILLING_DATA
+
+
+def filling_data(update, context):
+    button = update.callback_query.data
+    current_transaction = context.user_data['current_transaction']
+    current_field = context.user_data['field']
+
+    try:
+        index = int(button.split('_')[-1])
+        list_ = getattr(Default, current_field, [])
+        current_transaction[current_field] = list_[index]
+    except Exception as ex:
+        update.callback_query.answer("That didn't work because {}".format(ex))
+        logger.exception(ex)
+    else:
+        update.callback_query.edit_message_text(
+            format_transaction(current_transaction)
+        )
+
+    update.callback_query.edit_message_reply_markup(
+        make_main_inline_keyboard()
+    )
+
+    return SELECTING_FIELD
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, error)
+
+
+def fallback(update, context):
+    update.message.reply_text('Fallback!')
+    return WAITING_TRANSACTION
 
 
 def main():
@@ -101,28 +223,20 @@ def main():
 
     # Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-
+        entry_points=[MessageHandler(Filters.text, register_transaction,
+                                     pass_user_data=True)],
         states={
-            CHOOSING: [RegexHandler('^(Age|Favourite colour|Number of siblings)$',
-                                    regular_choice,
-                                    pass_user_data=True),
-                       RegexHandler('^Something else...$',
-                                    custom_choice),
-                       ],
-
-            TYPING_CHOICE: [MessageHandler(Filters.text,
-                                           regular_choice,
-                                           pass_user_data=True),
-                            ],
-
-            TYPING_REPLY: [MessageHandler(Filters.text,
-                                          received_information,
+            WAITING_TRANSACTION: [MessageHandler(Filters.text, register_transaction,
+                                                 pass_user_data=True)],
+            SELECTING_FIELD: [CallbackQueryHandler(
+                                             selecting_field,
+                                             pass_user_data=True)],
+            FILLING_DATA: [CallbackQueryHandler(
+                                          filling_data,
                                           pass_user_data=True),
                            ],
         },
-
-        fallbacks=[RegexHandler('^Done$', done, pass_user_data=True)]
+        fallbacks=[MessageHandler(Filters.text, fallback, pass_user_data=True)],
     )
 
     dp.add_handler(conv_handler)
