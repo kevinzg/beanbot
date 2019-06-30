@@ -111,6 +111,27 @@ def build_journal(user_data):
 
 
 # Utils
+SINGLE_VALUE_SETTINGS = ('currency', 'timezone', 'flag')
+MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2')
+
+
+def format_user_config(user_config):
+    lines = []
+
+    for key, value in user_config.items():
+        if key in SINGLE_VALUE_SETTINGS:
+            lines.append(f'{key}: {value}')
+        elif key in MULTI_VALUE_SETTINGS:
+            value_list = value
+            lines.append(f'{key}:')
+            prefix = '    - '
+
+            for value in value_list:
+                lines.append(f'{prefix}{value}')
+
+    return '\n'.join(lines)
+
+
 def get_field_name(field):
     return {
         'payee': 'Payee',
@@ -129,7 +150,6 @@ def set_default_user_config(user_data):
         account_1=['Expenses:Stuff', 'Expenses:Food',
                    'Expenses:Transportation'],
         account_2=['Assets:Cash', 'Assets:Bank'],
-        favorites=None,
     )
 
 
@@ -137,6 +157,26 @@ def get_user_config(user_data):
     if 'config' not in user_data:
         set_default_user_config(user_data)
     return user_data['config']
+
+
+def set_config_field(user_config, field, value):
+    value = value.strip()
+
+    if field in SINGLE_VALUE_SETTINGS:
+        if field == 'timezone':
+            try:
+                pytz.timezone(value)
+            except pytz.UnknownTimeZoneError:
+                raise ValueError("Unknown time zone")
+
+        user_config[field] = value
+    elif field in MULTI_VALUE_SETTINGS:
+        values = list(filter(None, value.split('\n')))
+        if not values:
+            raise ValueError("Not enough values")
+        user_config[field] = values
+    else:
+        raise ValueError("Unknown setting")
 
 
 class KeyboardFactory:
@@ -182,6 +222,21 @@ class KeyboardFactory:
             [button[1] for button in buttons],
         )
 
+    @staticmethod
+    def make_config_inline_keyboard(user_config):
+        labels = list(user_config.keys())
+
+        return KeyboardFactory._make_inline_keyboard(
+            [*labels, 'Cancel'],
+            [*labels, 'cancel']
+        )
+
+    @staticmethod
+    def make_cancel_button():
+        return KeyboardFactory._make_inline_keyboard(
+            ['Cancel'], ['cancel'], cols=1
+        )
+
 
 def clear_inline_keyboard(update):
     update.callback_query.edit_message_reply_markup(
@@ -195,7 +250,21 @@ def extract_index(data):
 
 
 # States
-WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA = range(3)
+(WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA,
+ SELECTING_CONFIG, FILLING_CONFIG) = range(5)
+
+
+def send_message_and_keyboard(update, message, inline_keyboard=None,
+                              do_update=False):
+    if inline_keyboard is None:
+        inline_keyboard = InlineKeyboardMarkup([[]])
+
+    if do_update:
+        update.callback_query.edit_message_text(message,
+                                                reply_markup=inline_keyboard)
+    else:
+        update.message.reply_text(message,
+                                  reply_markup=inline_keyboard)
 
 
 def send_transaction_and_keyboard(update, transaction, inline_keyboard=None,
@@ -205,12 +274,9 @@ def send_transaction_and_keyboard(update, transaction, inline_keyboard=None,
 
     formatted_transaction = format_transaction(transaction)
 
-    if do_update:
-        update.callback_query.edit_message_text(formatted_transaction,
-                                                reply_markup=inline_keyboard)
-    else:
-        update.message.reply_text(formatted_transaction,
-                                  reply_markup=inline_keyboard)
+    send_message_and_keyboard(update, formatted_transaction,
+                              inline_keyboard=inline_keyboard,
+                              do_update=do_update)
 
 
 def register_transaction(update, context):
@@ -340,6 +406,80 @@ def clear_journal(update, context):
     return WAITING_TRANSACTION
 
 
+def send_config(update, context):
+    config = get_user_config(context.user_data)
+    config_str = format_user_config(config)
+
+    update.message.reply_text(config_str)
+
+    return WAITING_TRANSACTION
+
+
+def edit_config(update, context):
+    user_config = get_user_config(context.user_data)
+    keyboard = KeyboardFactory.make_config_inline_keyboard(user_config)
+
+    send_message_and_keyboard(update, "Select setting to edit",
+                              inline_keyboard=keyboard)
+
+    return SELECTING_CONFIG
+
+
+def selecting_config(update, context):
+    button = update.callback_query.data
+
+    if button == 'cancel':
+        clear_inline_keyboard(update)
+        update.callback_query.edit_message_text(
+            "You can continue writing transactions."
+        )
+        update.callback_query.answer('Canceled!')
+
+        return WAITING_TRANSACTION
+
+    context.user_data['config_field'] = button
+    keyboard = KeyboardFactory.make_cancel_button()
+
+    send_message_and_keyboard(update, f"Write a value for {button}",
+                              inline_keyboard=keyboard, do_update=True)
+    update.callback_query.answer("Waiting for value")
+
+    return FILLING_CONFIG
+
+
+def filling_config(update, context):
+    user_config = get_user_config(context.user_data)
+    current_config_field = context.user_data['config_field']
+    value = update.message.text
+
+    try:
+        set_config_field(user_config, current_config_field, value)
+    except ValueError as ex:
+        send_message_and_keyboard(update, f'Error: {ex}\nTry again.')
+        return FILLING_CONFIG
+
+    send_message_and_keyboard(update, 'Config updated!')
+
+    del context.user_data['config_field']
+    return WAITING_TRANSACTION
+
+
+def cancel_config(update, context):
+    button = update.callback_query.data
+
+    if button == 'cancel':
+        clear_inline_keyboard(update)
+        update.callback_query.edit_message_text(
+            "You can continue writing transactions."
+        )
+        update.callback_query.answer('Canceled!')
+
+        return WAITING_TRANSACTION
+
+    logger.error("Got unexpected callback query")
+    return WAITING_TRANSACTION
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, error)
@@ -368,7 +508,10 @@ def main():
         CommandHandler('start', start),
         CommandHandler('journal', send_journal, pass_user_data=True),
         CommandHandler('clear', clear_journal, pass_user_data=True),
+        CommandHandler('config', send_config, pass_user_data=True),
+        CommandHandler('edit_config', edit_config, pass_user_data=True),
     ]
+
     conv_handler = ConversationHandler(
         entry_points=start_handlers,
         states={
@@ -379,6 +522,12 @@ def main():
                                                 pass_user_data=True),
                            MessageHandler(Filters.text, filling_data_text,
                                           pass_user_data=True)],
+            SELECTING_CONFIG: [CallbackQueryHandler(selecting_config,
+                                                    pass_user_data=True)],
+            FILLING_CONFIG: [MessageHandler(Filters.text, filling_config,
+                                            pass_user_data=True),
+                             CallbackQueryHandler(cancel_config,
+                                                  pass_user_data=True)],
         },
         fallbacks=[MessageHandler(Filters.text, fallback,
                                   pass_user_data=True)],
