@@ -10,6 +10,7 @@ ipdb = "*"
 
 [packages]
 python-telegram-bot = "==12.0.0b1"
+pytz = "*"
 
 [requires]
 python_version = "3.6"
