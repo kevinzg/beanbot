@@ -88,10 +88,26 @@ def set_transaction_field(transaction, field, value):
     transaction[field] = value.strip()
 
 
+def get_transaction_list(user_data):
+    return user_data.setdefault('transaction_list', [])
+
+
 def commit_transaction(transaction, user_data):
-    transaction_list = user_data.setdefault('transaction_list', [])
+    transaction_list = get_transaction_list(user_data)
     transaction_list.append(transaction)
     del user_data['current_transaction']
+
+
+def build_journal(user_data):
+    transaction_list = get_transaction_list(user_data)
+
+    if not transaction_list:
+        return "There are no transactions."
+
+    return '\n\n'.join(
+        format_transaction(transaction, beancount=True)
+        for transaction in transaction_list
+    )
 
 
 # Utils
@@ -197,14 +213,6 @@ def send_transaction_and_keyboard(update, transaction, inline_keyboard=None,
                                   reply_markup=inline_keyboard)
 
 
-def start(update, context):
-    update.message.reply_text(
-        "Hi! I'm BeanBot. Help will go here, but it hasn't been written yet.",
-    )
-
-    return WAITING_TRANSACTION
-
-
 def register_transaction(update, context):
     user_config = get_user_config(context.user_data)
     message_text = update.message.text
@@ -306,6 +314,32 @@ def filling_data_text(update, context):
     return SELECTING_FIELD
 
 
+def start(update, context):
+    update.message.reply_text(
+        "Hi! I'm BeanBot. Help will go here, but it hasn't been written yet.",
+    )
+
+    return WAITING_TRANSACTION
+
+
+def send_journal(update, context):
+    journal = build_journal(context.user_data)
+    update.message.reply_text(journal)
+
+    return WAITING_TRANSACTION
+
+
+def clear_journal(update, context):
+    try:
+        del context.user_data['transaction_list']
+    except KeyError:
+        pass
+
+    update.message.reply_text('Cleared!')
+
+    return WAITING_TRANSACTION
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, error)
@@ -328,13 +362,17 @@ def main():
     dp = updater.dispatcher
 
     # Add conversation handler with the states
+    start_handlers = [
+        MessageHandler(Filters.text, register_transaction,
+                       pass_user_data=True),
+        CommandHandler('start', start),
+        CommandHandler('journal', send_journal, pass_user_data=True),
+        CommandHandler('clear', clear_journal, pass_user_data=True),
+    ]
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.text, register_transaction,
-                                     pass_user_data=True)],
+        entry_points=start_handlers,
         states={
-            WAITING_TRANSACTION: [MessageHandler(Filters.text,
-                                                 register_transaction,
-                                                 pass_user_data=True)],
+            WAITING_TRANSACTION: start_handlers,
             SELECTING_FIELD: [CallbackQueryHandler(selecting_field,
                                                    pass_user_data=True)],
             FILLING_DATA: [CallbackQueryHandler(filling_data_button,
