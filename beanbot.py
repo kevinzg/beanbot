@@ -11,7 +11,7 @@ from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
                       ReplyKeyboardMarkup)
 from telegram.ext import (CallbackQueryHandler, CommandHandler,
                           ConversationHandler, Filters, MessageHandler,
-                          Updater)
+                          Updater, PicklePersistence)
 
 
 # Token
@@ -307,8 +307,12 @@ def fallback(update, context):
 
 
 def main():
+    # Create a persistence object
+    persistence = PicklePersistence(filename='db.pickle',
+                                    store_chat_data=False)
+
     # Create the Updater and pass it your bot's token
-    updater = Updater(TOKEN, use_context=True)
+    updater = Updater(TOKEN, persistence=persistence, use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -330,6 +334,7 @@ def main():
         },
         fallbacks=[MessageHandler(Filters.text, fallback,
                                   pass_user_data=True)],
+        persistent=True, name='beanbot_conversation_handler'
     )
 
     dp.add_handler(conv_handler)
