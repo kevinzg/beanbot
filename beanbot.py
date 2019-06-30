@@ -63,6 +63,27 @@ def parse_message_transaction(text, user_config):
         raise ValueError from ex
 
 
+def format_transaction(transaction, beancount=False):
+    if beancount:
+        sep = ' '
+        fmt = lambda x: '"{}"'.format(x)  # noqa: E731
+    else:
+        sep = ' - '
+        fmt = lambda x: x  # noqa: E731
+
+    header = sep.join(
+        fmt(x)
+        for x in filter(None, (transaction['payee'], transaction['info']))
+    )
+
+    return ('{date} {flag} {header}\n'
+            '    {account_1}    {amount:.2f} {currency}\n'
+            '    {account_2}').format(
+                **transaction,
+                header=header
+            )
+
+
 def set_transaction_field(transaction, field, value):
     transaction[field] = value.strip()
 
@@ -159,17 +180,6 @@ def extract_index(data):
 
 # States
 WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA = range(3)
-
-
-def format_transaction(transaction):
-    header = ' - '.join(filter(None,
-                               (transaction['payee'], transaction['info'])))
-    return ('{date} {flag} {header}\n'
-            '    {account_1}    {amount:.2f} {currency}\n'
-            '    {account_2}').format(
-                **transaction,
-                header=header
-            )
 
 
 def send_transaction_and_keyboard(update, transaction, inline_keyboard=None,
