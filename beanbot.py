@@ -119,11 +119,11 @@ class KeyboardFactory:
     @staticmethod
     def make_generic_inline_keyboard(type_, labels, cols=2, back=True,
                                      back_data='go_back', back_label="« Back"):
+        labels = list(labels)
         n = len(labels)
         data = [f'{type_}_{i}' for i in range(n)]
 
         if back:
-            labels = labels.copy()
             labels.append(back_label)
             data.append(back_data)
 
@@ -136,6 +136,7 @@ class KeyboardFactory:
             ('Info', 'info'),
             ('Expense acct.', 'account_1'),
             ('Asset acct.', 'account_2'),
+            ('Cancel', 'cancel'),
             ('Done', 'done'),
         ]
 
@@ -203,6 +204,7 @@ def register_transaction(update, context):
                                                 user_config)
     except ValueError:
         update.message.reply_text("Seems like the amount is missing.")
+        return WAITING_TRANSACTION
     except Exception as ex:
         update.message.reply_text("Sorry, I couldn't understand that.")
         logger.exception("Could not parse transaction", ex)
@@ -225,6 +227,15 @@ def selecting_field(update, context):
         clear_inline_keyboard(update)
 
         update.callback_query.answer('Saved!')
+
+        return WAITING_TRANSACTION
+    elif button == 'cancel':
+        clear_inline_keyboard(update)
+        update.callback_query.edit_message_text('Canceled transaction')
+
+        del context.user_data['current_transaction']
+
+        update.callback_query.answer('Canceled!')
 
         return WAITING_TRANSACTION
 
