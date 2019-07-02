@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
 import datetime
-import decimal
 import itertools
 import logging
 import os
+from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 
 import pytz
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
                       ReplyKeyboardMarkup)
 from telegram.ext import (CallbackQueryHandler, CommandHandler,
                           ConversationHandler, Filters, MessageHandler,
-                          Updater, PicklePersistence)
+                          PicklePersistence, Updater)
 
 
 # Token
@@ -43,7 +44,7 @@ def make_new_transaction(user_config, **kwargs):
         'flag': user_config['flag'],
         'currency': user_config['currency'],
         'account_1': user_config['account_1'][0],
-        'amount': decimal.Decimal(0),
+        'amount': Decimal(0),
         'account_2': user_config['account_2'][0],
     }
     transaction.update(kwargs)
@@ -57,9 +58,9 @@ def parse_message_transaction(text, user_config):
         return make_new_transaction(
             user_config,
             info=' '.join(info),
-            amount=decimal.Decimal(amount),
+            amount=Decimal(amount),
         )
-    except (ValueError, decimal.InvalidOperation) as ex:
+    except (ValueError, InvalidOperation) as ex:
         raise ValueError from ex
 
 
@@ -110,9 +111,36 @@ def build_journal(user_data):
     )
 
 
+def build_report_dict(user_data):
+    config = get_user_config(user_data)
+    transaction_list = get_transaction_list(user_data)
+
+    report = defaultdict(
+        Decimal,
+        {account: Decimal(amount) for account, amount
+         in zip(config['account_2'], config['initial'])}
+    )
+
+    for transaction in transaction_list:
+        account = transaction['account_2']
+        amount = transaction['amount']
+        report[account] -= amount
+
+    return report
+
+
+def build_report(user_data):
+    report = build_report_dict(user_data)
+
+    return '\n'.join(
+        f'{account}    {amount:.2f}' for account, amount
+        in report.items()
+    )
+
+
 # Utils
 SINGLE_VALUE_SETTINGS = ('currency', 'timezone', 'flag')
-MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2')
+MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2', 'initial')
 
 
 def format_user_config(user_config):
@@ -141,8 +169,8 @@ def get_field_name(field):
     }[field]
 
 
-def set_default_user_config(user_data):
-    user_data['config'] = dict(
+def get_default_user_config():
+    return dict(
         currency='USD',
         timezone='UTC',
         flag='*',
@@ -150,7 +178,12 @@ def set_default_user_config(user_data):
         account_1=['Expenses:Stuff', 'Expenses:Food',
                    'Expenses:Transportation'],
         account_2=['Assets:Cash', 'Assets:Bank'],
+        initial=['0.00', '0.00']
     )
+
+
+def set_default_user_config(user_data):
+    user_data['config'] = get_default_user_config()
 
 
 def get_user_config(user_data):
@@ -174,9 +207,27 @@ def set_config_field(user_config, field, value):
         values = list(filter(None, value.split('\n')))
         if not values:
             raise ValueError("Not enough values")
+
+        if field == 'initial':
+            n = len(user_config['account_2'])
+            if len(values) != len(user_config['account_2']):
+                raise ValueError(f"I need {n} initial amounts")
+            try:
+                [Decimal(x) for x in values]
+            except (ValueError, InvalidOperation):
+                raise ValueError(f"Got an invalid amount")
+
         user_config[field] = values
     else:
         raise ValueError("Unknown setting")
+
+
+def update_initial_amounts(user_data):
+    report = build_report_dict(user_data)
+    config = get_user_config(user_data)
+
+    for i, account in enumerate(config['account_2']):
+        config['initial'][i] = '{0:.2f}'.format(report[account])
 
 
 class KeyboardFactory:
@@ -223,7 +274,8 @@ class KeyboardFactory:
         )
 
     @staticmethod
-    def make_config_inline_keyboard(user_config):
+    def make_config_inline_keyboard():
+        user_config = get_default_user_config()
         labels = list(user_config.keys())
 
         return KeyboardFactory._make_inline_keyboard(
@@ -395,7 +447,16 @@ def send_journal(update, context):
     return WAITING_TRANSACTION
 
 
+def send_report(update, context):
+    report = build_report(context.user_data)
+    update.message.reply_text(report)
+
+    return WAITING_TRANSACTION
+
+
 def clear_journal(update, context):
+    update_initial_amounts(context.user_data)
+
     try:
         del context.user_data['transaction_list']
     except KeyError:
@@ -416,8 +477,7 @@ def send_config(update, context):
 
 
 def edit_config(update, context):
-    user_config = get_user_config(context.user_data)
-    keyboard = KeyboardFactory.make_config_inline_keyboard(user_config)
+    keyboard = KeyboardFactory.make_config_inline_keyboard()
 
     send_message_and_keyboard(update, "Select setting to edit",
                               inline_keyboard=keyboard)
@@ -510,6 +570,7 @@ def main():
         CommandHandler('clear', clear_journal, pass_user_data=True),
         CommandHandler('config', send_config, pass_user_data=True),
         CommandHandler('edit_config', edit_config, pass_user_data=True),
+        CommandHandler('report', send_report, pass_user_data=True),
     ]
 
     conv_handler = ConversationHandler(
