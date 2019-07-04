@@ -140,7 +140,8 @@ def build_report(user_data):
 
 # Utils
 SINGLE_VALUE_SETTINGS = ('currency', 'timezone', 'flag')
-MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2', 'initial')
+MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2', 'initial',
+                        'favorites')
 
 
 def format_user_config(user_config):
@@ -178,18 +179,23 @@ def get_default_user_config():
         account_1=['Expenses:Stuff', 'Expenses:Food',
                    'Expenses:Transportation'],
         account_2=['Assets:Cash', 'Assets:Bank'],
-        initial=['0.00', '0.00']
+        initial=['0.00', '0.00'],
+        favorites=['Lunch 12.00'],
     )
 
 
-def set_default_user_config(user_data):
-    user_data['config'] = get_default_user_config()
+def set_default_config_values(user_config):
+    default_config = get_default_user_config()
+
+    for key in default_config:
+        if key not in user_config:
+            user_config[key] = default_config[key]
 
 
 def get_user_config(user_data):
-    if 'config' not in user_data:
-        set_default_user_config(user_data)
-    return user_data['config']
+    user_config = user_data.setdefault('config', {})
+    set_default_config_values(user_config)
+    return user_config
 
 
 def set_config_field(user_config, field, value):
@@ -287,6 +293,13 @@ class KeyboardFactory:
     def make_cancel_button():
         return KeyboardFactory._make_inline_keyboard(
             ['Cancel'], ['cancel'], cols=1
+        )
+
+    @staticmethod
+    def make_favorite_keyboard(favorites):
+        return ReplyKeyboardMarkup.from_column(
+            favorites,
+            one_time_keyboard=True,
         )
 
 
@@ -524,6 +537,18 @@ def filling_config(update, context):
     return WAITING_TRANSACTION
 
 
+def send_keyboard(update, context):
+    user_config = get_user_config(context.user_data)
+    keyboard = KeyboardFactory.make_favorite_keyboard(user_config['favorites'])
+
+    update.message.reply_text(
+        "Here is your keyboard",
+        reply_markup=keyboard,
+    )
+
+    return WAITING_TRANSACTION
+
+
 def cancel_config(update, context):
     button = update.callback_query.data
 
@@ -571,6 +596,7 @@ def main():
         CommandHandler('config', send_config, pass_user_data=True),
         CommandHandler('edit_config', edit_config, pass_user_data=True),
         CommandHandler('report', send_report, pass_user_data=True),
+        CommandHandler('keyboard', send_keyboard, pass_user_data=True),
     ]
 
     conv_handler = ConversationHandler(
