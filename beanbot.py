@@ -6,6 +6,7 @@ import logging
 import os
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
 
 import pytz
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
@@ -455,7 +456,10 @@ def start(update, context):
 
 def send_journal(update, context):
     journal = build_journal(context.user_data)
-    update.message.reply_text(journal)
+    file = BytesIO()
+    file.write(journal.encode('utf-8'))
+    file.seek(0)
+    update.message.reply_document(file, filename='journal.txt')
 
     return WAITING_TRANSACTION
 
