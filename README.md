@@ -1,1 +1,1 @@
-# BeanBot
+# Beanbot
