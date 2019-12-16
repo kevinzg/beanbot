@@ -8,9 +8,7 @@ class BaseTransaction(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
-    date = models.DateField(
-        auto_now_add=True,
-    )
+    date = models.DateField()
     payee = models.ForeignKey(
         'Payee',
         on_delete=models.PROTECT,
@@ -23,11 +21,22 @@ class BaseTransaction(models.Model):
     flag = models.CharField(
         max_length=1,
         default='!',
+        choices=[
+            ('!', '!'),
+            ('*', '*'),
+        ]
     )
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
     )
+
+    class Meta:
+        abstract = True
+        ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['user', '-date', '-created_at']),
+        ]
 
 
 class BasePosting(models.Model):
@@ -39,11 +48,13 @@ class BasePosting(models.Model):
     amount = models.DecimalField(
         max_digits=19,
         decimal_places=4,
-        null=True,
     )
     explicit = models.BooleanField(
-        default=False,
+        default=True,
     )
+
+    class Meta:
+        abstract = True
 
 
 class Transaction(BaseTransaction):
@@ -61,7 +72,7 @@ class TransactionTemplate(BaseTransaction):
     keyword = models.TextField()
 
     class Meta(BaseTransaction.Meta):
-        unique_together = ('user', 'keyword')
+        unique_together = ['user', 'keyword']
 
 
 class PostingTemplate(BasePosting):

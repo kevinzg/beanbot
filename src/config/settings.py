@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'beanbot.users.apps.UsersConfig'
+    'beanbot.users.apps.UsersConfig',
+    'beanbot.ledger.apps.LedgerConfig',
 ]
 
 MIDDLEWARE = [
