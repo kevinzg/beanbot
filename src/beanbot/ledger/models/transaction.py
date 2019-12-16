@@ -58,18 +58,31 @@ class BasePosting(models.Model):
 
 
 class Transaction(BaseTransaction):
-    pass
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='transactions',
+        related_query_name='transaction'
+    )
 
 
 class Posting(BasePosting):
     transaction = models.ForeignKey(
         'Transaction',
         on_delete=models.CASCADE,
+        related_name='postings',
+        related_query_name='posting',
     )
 
 
 class TransactionTemplate(BaseTransaction):
     keyword = models.TextField()
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='templates',
+        related_query_name='template'
+    )
 
     class Meta(BaseTransaction.Meta):
         unique_together = ['user', 'keyword']
@@ -79,4 +92,6 @@ class PostingTemplate(BasePosting):
     transaction = models.ForeignKey(
         'TransactionTemplate',
         on_delete=models.CASCADE,
+        related_name='postings',
+        related_query_name='posting',
     )

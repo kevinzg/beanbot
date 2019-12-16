@@ -18,6 +18,8 @@ class Account(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        related_name='accounts',
+        related_query_name='account',
     )
     default = models.CharField(
         max_length=1,
@@ -46,6 +48,8 @@ class Payee(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        related_name='payees',
+        related_query_name='payee',
     )
     default = models.BooleanField(
         default=None,
