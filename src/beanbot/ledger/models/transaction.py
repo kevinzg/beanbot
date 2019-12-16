@@ -56,6 +56,14 @@ class BasePosting(models.Model):
     class Meta:
         abstract = True
 
+    @property
+    def is_target(self):
+        return self.explicit
+
+    @property
+    def is_source(self):
+        return not self.is_target
+
 
 class Transaction(BaseTransaction):
     user = models.ForeignKey(
