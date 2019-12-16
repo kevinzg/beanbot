@@ -23,9 +23,11 @@ class Account(models.Model):
         max_length=1,
         default=None,
         null=True,
+        blank=True,
         choices=[
             ('s', 'Source'),
             ('t', 'Target'),
+            (None, 'Null'),
         ]
     )
 
