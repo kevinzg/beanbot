@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from beanbot.ledger.constants import SOURCE, TARGET
+
 User = settings.AUTH_USER_MODEL
 
 
@@ -27,8 +29,8 @@ class Account(models.Model):
         null=True,
         blank=True,
         choices=[
-            ('s', 'Source'),
-            ('t', 'Target'),
+            (SOURCE, 'Source'),
+            (TARGET, 'Target'),
             (None, 'Null'),
         ]
     )

@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from beanbot.ledger.constants import COMPLETE, INCOMPLETE
+
 User = settings.AUTH_USER_MODEL
 
 
@@ -20,10 +22,10 @@ class BaseTransaction(models.Model):
     )
     flag = models.CharField(
         max_length=1,
-        default='!',
+        default=INCOMPLETE,
         choices=[
-            ('!', '!'),
-            ('*', '*'),
+            (INCOMPLETE, '!'),
+            (COMPLETE, '*'),
         ]
     )
     user = models.ForeignKey(
