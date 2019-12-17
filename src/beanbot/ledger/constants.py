@@ -1,0 +1,8 @@
+DEFAULT_TARGET_ACCOUNT = "Expenses:Stuff"
+DEFAULT_SOURCE_ACCOUNT = "Assets:Cash"
+
+SOURCE = 's'
+TARGET = 't'
+
+COMPLETE = '*'
+INCOMPLETE = '!'
