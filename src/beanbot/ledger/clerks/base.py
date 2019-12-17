@@ -1,17 +1,19 @@
-from django.conf import settings
-
-User = settings.AUTH_USER_MODEL
+from beanbot.users.models import User
 
 
 class BaseClerk:
     """Base class for clerks"""
 
-    def __init__(self, user_id: int):
-        self.user = User.objects.get(user_id=user_id)
+    def __init__(self, user: User):
+        self.user = user
 
     @property
     def transactions(self):
         return self.user.transactions
+
+    @property
+    def postings(self):
+        return self.user.postings
 
     @property
     def templates(self):
