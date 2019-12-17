@@ -12,10 +12,6 @@ class BaseClerk:
         return self.user.transactions
 
     @property
-    def postings(self):
-        return self.user.postings
-
-    @property
     def templates(self):
         return self.user.templates
 

@@ -24,13 +24,13 @@ class Registrar(BaseClerk):
             payee_id=payee_id,
             flag='*',
         )
-        self.postings.create(
+        transaction.postings.create(
             account_id=target_account_id,
             amount=amount,
             explicit=True,
             transaction=transaction,
         )
-        self.postings.create(
+        transaction.postings.create(
             account_id=source_account_id,
             amount=amount * -1,
             explicit=False,
