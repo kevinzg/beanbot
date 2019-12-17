@@ -40,6 +40,9 @@ class BaseTransaction(models.Model):
             models.Index(fields=['user', '-date', '-created_at']),
         ]
 
+    def __str__(self):
+        return f'[{self.id}] {self.narration} ({self.date})'
+
 
 class BasePosting(models.Model):
     account = models.ForeignKey(
@@ -65,6 +68,9 @@ class BasePosting(models.Model):
     @property
     def is_source(self):
         return not self.is_target
+
+    def __str__(self):
+        return f'[{self.id}] {self.account.display_name} {self.amount}'
 
 
 class Transaction(BaseTransaction):

@@ -41,6 +41,9 @@ class Account(models.Model):
         ]
         unique_together = ['user', 'default']
 
+    def __str__(self):
+        return f'[{self.id}] {self.display_name}'
+
 
 class Payee(models.Model):
     created_at = models.DateTimeField(
@@ -60,3 +63,6 @@ class Payee(models.Model):
 
     class Meta:
         unique_together = ['user', 'default']
+
+    def __str__(self):
+        return f'[{self.id}] {self.name}'
