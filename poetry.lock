@@ -99,6 +99,17 @@ argon2 = ["argon2-cffi (>=16.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
+category = "main"
+description = "Web APIs for Django, made easy."
+name = "djangorestframework"
+optional = false
+python-versions = ">=3.5"
+version = "3.11.0"
+
+[package.dependencies]
+django = ">=1.11"
+
+[[package]]
 category = "dev"
 description = "Discover and load entry points from installed packages."
 name = "entrypoints"
@@ -363,7 +374,7 @@ python-versions = "*"
 version = "0.1.7"
 
 [metadata]
-content-hash = "5318ecb4bc41cea94c36665ea95da93370ee58ea1a56ae88a4baef0a9a6b6a84"
+content-hash = "96e8c7c181aff15763d1148ce850d2d3134f14c8a3719bea92c2237eff99fe66"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -452,6 +463,10 @@ decorator = [
 django = [
     {file = "Django-3.0-py3-none-any.whl", hash = "sha256:6f857bd4e574442ba35a7172f1397b303167dae964cf18e53db5e85fe248d000"},
     {file = "Django-3.0.tar.gz", hash = "sha256:d98c9b6e5eed147bc51f47c014ff6826bd1ab50b166956776ee13db5a58804ae"},
+]
+djangorestframework = [
+    {file = "djangorestframework-3.11.0-py3-none-any.whl", hash = "sha256:05809fc66e1c997fd9a32ea5730d9f4ba28b109b9da71fccfa5ff241201fd0a4"},
+    {file = "djangorestframework-3.11.0.tar.gz", hash = "sha256:e782087823c47a26826ee5b6fa0c542968219263fb3976ec3c31edab23a4001f"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
