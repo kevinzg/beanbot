@@ -17,12 +17,12 @@ class UserOwnedRelatedField(serializers.PrimaryKeyRelatedField):
         return super().to_internal_value(data).pk
 
 
-class BaseForm(serializers.Serializer):
+class BaseValidator(serializers.BaseSerializer):
     def __init__(self, data: dict, user: User):
         super().__init__(data=data, context={'user': user})
 
 
-class RegisterTransactionForm(BaseForm):
+class RegisterTransactionValidator(BaseValidator):
     """Form to register a new transaction"""
 
     narration = serializers.CharField(allow_blank=True)
