@@ -579,7 +579,7 @@ def fallback(update, context):
     return WAITING_TRANSACTION
 
 
-def main():
+def run():
     # Create a persistence object
     persistence = PicklePersistence(filename='db.pickle',
                                     store_chat_data=False)
@@ -640,4 +640,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run()
