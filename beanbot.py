@@ -2,6 +2,7 @@
 
 import datetime
 import itertools
+import json
 import logging
 import os
 from collections import defaultdict
@@ -110,6 +111,12 @@ def build_journal(user_data):
         format_transaction(transaction, beancount=True)
         for transaction in transaction_list
     )
+
+
+def build_json(user_data):
+    transaction_list = get_transaction_list(user_data)
+
+    return transaction_list
 
 
 def build_report_dict(user_data):
@@ -464,6 +471,16 @@ def send_journal(update, context):
     return WAITING_TRANSACTION
 
 
+def send_json(update, context):
+    journal = build_json(context.user_data)
+    file = BytesIO()
+    json.dump(journal, file, default=lambda d: d.isoformat())
+    file.seek(0)
+    update.message.reply_document(file, filename='journal.json')
+
+    return WAITING_TRANSACTION
+
+
 def send_report(update, context):
     report = build_report(context.user_data)
     update.message.reply_text(report)
@@ -596,6 +613,7 @@ def main():
                        pass_user_data=True),
         CommandHandler('start', start),
         CommandHandler('journal', send_journal, pass_user_data=True),
+        CommandHandler('json', send_json, pass_user_data=True),
         CommandHandler('clear', clear_journal, pass_user_data=True),
         CommandHandler('config', send_config, pass_user_data=True),
         CommandHandler('edit_config', edit_config, pass_user_data=True),
