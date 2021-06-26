@@ -114,9 +114,14 @@ def build_journal(user_data):
 
 
 def build_json(user_data):
-    transaction_list = get_transaction_list(user_data)
+    def transform(value):
+        if isinstance(value, datetime.datetime):
+            return value.isoformat()
+        else:
+            return f'{value}'
 
-    return transaction_list
+    transaction_list = get_transaction_list(user_data)
+    return json.dumps(transaction_list, default=transform, indent=4)
 
 
 def build_report_dict(user_data):
@@ -229,7 +234,7 @@ def set_config_field(user_config, field, value):
             try:
                 [Decimal(x) for x in values]
             except (ValueError, InvalidOperation):
-                raise ValueError(f"Got an invalid amount")
+                raise ValueError("Got an invalid amount")
 
         user_config[field] = values
     else:
@@ -461,22 +466,38 @@ def start(update, context):
     return WAITING_TRANSACTION
 
 
+def get_journal_filename(ext, timezone):
+    timezone = pytz.timezone(timezone)
+    datestr = datetime.datetime.now(tz=timezone).strftime('%Y-%m-%d-%H-%M-%S')
+    return f'journal-{datestr}.{ext}'
+
+
 def send_journal(update, context):
+    user_config = get_user_config(context.user_data)
+    timezone = user_config['timezone'],
+    filename = get_journal_filename('txt', timezone)
+
     journal = build_journal(context.user_data)
+
     file = BytesIO()
     file.write(journal.encode('utf-8'))
     file.seek(0)
-    update.message.reply_document(file, filename='journal.txt')
+    update.message.reply_document(file, filename=filename)
 
     return WAITING_TRANSACTION
 
 
 def send_json(update, context):
+    user_config = get_user_config(context.user_data)
+    timezone = user_config['timezone'],
+    filename = get_journal_filename('json', timezone)
+
     journal = build_json(context.user_data)
+
     file = BytesIO()
-    json.dump(journal, file, default=lambda d: d.isoformat())
+    file.write(journal.encode('utf-8'))
     file.seek(0)
-    update.message.reply_document(file, filename='journal.json')
+    update.message.reply_document(file, filename=filename)
 
     return WAITING_TRANSACTION
 
