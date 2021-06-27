@@ -474,7 +474,7 @@ def get_journal_filename(ext, timezone):
 
 def send_journal(update, context):
     user_config = get_user_config(context.user_data)
-    timezone = user_config['timezone'],
+    timezone = user_config['timezone']
     filename = get_journal_filename('txt', timezone)
 
     journal = build_journal(context.user_data)
