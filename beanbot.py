@@ -489,7 +489,7 @@ def send_journal(update, context):
 
 def send_json(update, context):
     user_config = get_user_config(context.user_data)
-    timezone = user_config['timezone'],
+    timezone = user_config['timezone']
     filename = get_journal_filename('json', timezone)
 
     journal = build_json(context.user_data)
