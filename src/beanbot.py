@@ -67,6 +67,67 @@ class UserConfig:
     credit_accounts = ['Cash', 'CC', 'Bank']
 
 
+# Parser
+
+
+@dataclass
+class Message:
+    """
+    action can be:
+    - new: New transaction
+    - add: Add posting to last transaction
+    - set_info: Overwrite last transaction info
+    - fix_amount: Increment last posting amount
+
+    payload type depends on the action:
+    - new: dict with info and amount
+    - add: same as new
+    - set_info: string with new info
+    - fix_amount: Decimal with the increase amount
+    """
+
+    action: str  # new, add, set_info or fix_amount
+    payload: Any
+
+
+def parse_message(message: str) -> Message:
+    message = message.strip()
+
+    def inner_parse():
+        try:
+            *info, amount = message.split()
+            info = ' '.join(info).strip()
+            if not info:
+                raise ValueError("Info can't be empty")
+            return dict(
+                info=info,
+                amount=Decimal(amount),
+            )
+        except (ValueError, InvalidOperation) as ex:
+            raise ValueError from ex
+
+    if message.startswith('#'):
+        info = message[1:].strip()
+        if not info:
+            raise ValueError("Info can't be empty")
+        return Message('set_info', info)
+
+    if message.startswith('+') or message.startswith('-'):
+        diff = None
+        try:
+            diff = Decimal(message)
+        except (ValueError, InvalidOperation):
+            pass
+        if diff is not None:
+            return Message('fix_amount', diff)
+
+    if message.startswith('+'):
+        message = message[1:]
+        return Message('add', inner_parse())
+
+    return Message('new', inner_parse())
+
+
 PREFILLED_FIELDS = ('payee', 'account_1', 'account_2')
 
 
