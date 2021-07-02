@@ -299,6 +299,17 @@ toml = "*"
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
 
 [[package]]
+name = "python-dotenv"
+version = "0.18.0"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "python-telegram-bot"
 version = "13.7"
 description = "We have made you a wrapper you can't refuse"
@@ -386,7 +397,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "032cff480b3bd4e18a10296e69642351beeb440ebf9d5705d33a4e1413847947"
+content-hash = "3ae9b5525c2bb8dbfe72d7d5138217f57d6dd21543557a4229ea65c0a054cca5"
 
 [metadata.files]
 appnope = [
@@ -491,6 +502,10 @@ pyparsing = [
 pytest = [
     {file = "pytest-6.2.4-py3-none-any.whl", hash = "sha256:91ef2131a9bd6be8f76f1f08eac5c5317221d6ad1e143ae03894b862e8976890"},
     {file = "pytest-6.2.4.tar.gz", hash = "sha256:50bcad0a0b9c5a72c8e4e7c9855a3ad496ca6a881a3641b4260605450772c54b"},
+]
+python-dotenv = [
+    {file = "python-dotenv-0.18.0.tar.gz", hash = "sha256:effaac3c1e58d89b3ccb4d04a40dc7ad6e0275fda25fd75ae9d323e2465e202d"},
+    {file = "python_dotenv-0.18.0-py2.py3-none-any.whl", hash = "sha256:dd8fe852847f4fbfadabf6183ddd4c824a9651f02d51714fa075c95561959c7d"},
 ]
 python-telegram-bot = [
     {file = "python-telegram-bot-13.7.tar.gz", hash = "sha256:24df75459e335b96baffa6991679f844bd426978af5a69ca419a0ac43a40602c"},
