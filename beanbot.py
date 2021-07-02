@@ -20,6 +20,9 @@ from telegram.ext import (
     PicklePersistence,
     Updater,
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Token
