@@ -6,8 +6,10 @@ import json
 import logging
 import os
 from collections import defaultdict
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from typing import List, Any
 
 import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
@@ -26,9 +28,12 @@ load_dotenv()
 
 
 # Token
+
 TOKEN = os.environ.get('BOT_TOKEN')
 
+
 # Logging
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
@@ -37,6 +42,31 @@ logger = logging.getLogger(__name__)
 
 
 # Models
+
+
+@dataclass
+class Posting:
+    debit_account: str  # i.e. money is going into this account, usually an Expense
+    credit_account: str  # i.e. money is going out of this account, usually an Asset
+    amount: Decimal
+    currency: str
+
+
+@dataclass
+class Transaction:
+    date: datetime.datetime
+    info: str = ''
+    flag: str = '!'  # '!' or '*'
+    postings: List[Posting] = field(default_factory=list)
+
+
+@dataclass
+class UserConfig:
+    currency: str = 'USD'
+    timezone: str = 'UTC'
+    credit_accounts = ['Cash', 'CC', 'Bank']
+
+
 PREFILLED_FIELDS = ('payee', 'account_1', 'account_2')
 
 
