@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "beanbot"
+version = "0.2.0"
+description = "Telegram bot for Beancount"
+authors = ["Kevin Zúñiga <kevin.zun@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+python-telegram-bot = "^13.7"
+pytz = "^2021.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+ipython = "^7.25.0"
+ipdb = "^0.13.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
