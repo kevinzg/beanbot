@@ -10,11 +10,16 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 import pytz
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
-                      ReplyKeyboardMarkup)
-from telegram.ext import (CallbackQueryHandler, CommandHandler,
-                          ConversationHandler, Filters, MessageHandler,
-                          PicklePersistence, Updater)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ConversationHandler,
+    Filters,
+    MessageHandler,
+    PicklePersistence,
+    Updater,
+)
 
 
 # Token
@@ -22,8 +27,7 @@ TOKEN = os.environ.get('BOT_TOKEN')
 
 # Logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
 logger = logging.getLogger(__name__)
@@ -74,17 +78,13 @@ def format_transaction(transaction, beancount=False):
         sep = ' - '
         fmt = lambda x: x  # noqa: E731
 
-    header = sep.join(
-        fmt(x)
-        for x in filter(None, (transaction['payee'], transaction['info']))
-    )
+    header = sep.join(fmt(x) for x in filter(None, (transaction['payee'], transaction['info'])))
 
-    return ('{date} {flag} {header}\n'
-            '    {account_1}    {amount:.2f} {currency}\n'
-            '    {account_2}').format(
-                **transaction,
-                header=header
-            )
+    return (
+        '{date} {flag} {header}\n'
+        '    {account_1}    {amount:.2f} {currency}\n'
+        '    {account_2}'
+    ).format(**transaction, header=header)
 
 
 def set_transaction_field(transaction, field, value):
@@ -108,8 +108,7 @@ def build_journal(user_data):
         return "There are no transactions."
 
     return '\n\n'.join(
-        format_transaction(transaction, beancount=True)
-        for transaction in transaction_list
+        format_transaction(transaction, beancount=True) for transaction in transaction_list
     )
 
 
@@ -130,8 +129,10 @@ def build_report_dict(user_data):
 
     report = defaultdict(
         Decimal,
-        {account: Decimal(amount) for account, amount
-         in zip(config['account_2'], config['initial'])}
+        {
+            account: Decimal(amount)
+            for account, amount in zip(config['account_2'], config['initial'])
+        },
     )
 
     for transaction in transaction_list:
@@ -145,16 +146,12 @@ def build_report_dict(user_data):
 def build_report(user_data):
     report = build_report_dict(user_data)
 
-    return '\n'.join(
-        f'{account}    {amount:.2f}' for account, amount
-        in report.items()
-    )
+    return '\n'.join(f'{account}    {amount:.2f}' for account, amount in report.items())
 
 
 # Utils
 SINGLE_VALUE_SETTINGS = ('currency', 'timezone', 'flag')
-MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2', 'initial',
-                        'favorites')
+MULTI_VALUE_SETTINGS = ('payee', 'account_1', 'account_2', 'initial', 'favorites')
 
 
 def format_user_config(user_config):
@@ -189,8 +186,7 @@ def get_default_user_config():
         timezone='UTC',
         flag='*',
         payee=['Store', 'Restaurant', 'Taxi'],
-        account_1=['Expenses:Stuff', 'Expenses:Food',
-                   'Expenses:Transportation'],
+        account_1=['Expenses:Stuff', 'Expenses:Food', 'Expenses:Transportation'],
         account_2=['Assets:Cash', 'Assets:Bank'],
         initial=['0.00', '0.00'],
         favorites=['Lunch 12.00'],
@@ -252,20 +248,27 @@ def update_initial_amounts(user_data):
 class KeyboardFactory:
     @staticmethod
     def _make_inline_keyboard(labels, data, cols=2):
-        button_kwargs = [dict(text=label, callback_data=datum)
-                         for label, datum in zip(labels, data)]
+        button_kwargs = [
+            dict(text=label, callback_data=datum) for label, datum in zip(labels, data)
+        ]
         rows = len(data) // cols + len(data) % cols
 
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton(**kwargs)
-             for kwargs in itertools.islice(
-                 button_kwargs, start * cols, start * cols + cols)]
-            for start in range(rows)
-        ])
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(**kwargs)
+                    for kwargs in itertools.islice(
+                        button_kwargs, start * cols, start * cols + cols
+                    )
+                ]
+                for start in range(rows)
+            ]
+        )
 
     @staticmethod
-    def make_generic_inline_keyboard(type_, labels, cols=2, back=True,
-                                     back_data='go_back', back_label="« Back"):
+    def make_generic_inline_keyboard(
+        type_, labels, cols=2, back=True, back_data='go_back', back_label="« Back"
+    ):
         labels = list(labels)
         n = len(labels)
         data = [f'{type_}_{i}' for i in range(n)]
@@ -297,16 +300,11 @@ class KeyboardFactory:
         user_config = get_default_user_config()
         labels = list(user_config.keys())
 
-        return KeyboardFactory._make_inline_keyboard(
-            [*labels, 'Cancel'],
-            [*labels, 'cancel']
-        )
+        return KeyboardFactory._make_inline_keyboard([*labels, 'Cancel'], [*labels, 'cancel'])
 
     @staticmethod
     def make_cancel_button():
-        return KeyboardFactory._make_inline_keyboard(
-            ['Cancel'], ['cancel'], cols=1
-        )
+        return KeyboardFactory._make_inline_keyboard(['Cancel'], ['cancel'], cols=1)
 
     @staticmethod
     def make_favorite_keyboard(favorites):
@@ -317,9 +315,7 @@ class KeyboardFactory:
 
 
 def clear_inline_keyboard(update):
-    update.callback_query.edit_message_reply_markup(
-        InlineKeyboardMarkup([[]])
-    )
+    update.callback_query.edit_message_reply_markup(InlineKeyboardMarkup([[]]))
 
 
 def extract_index(data):
@@ -328,33 +324,28 @@ def extract_index(data):
 
 
 # States
-(WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA,
- SELECTING_CONFIG, FILLING_CONFIG) = range(5)
+(WAITING_TRANSACTION, SELECTING_FIELD, FILLING_DATA, SELECTING_CONFIG, FILLING_CONFIG) = range(5)
 
 
-def send_message_and_keyboard(update, message, inline_keyboard=None,
-                              do_update=False):
+def send_message_and_keyboard(update, message, inline_keyboard=None, do_update=False):
     if inline_keyboard is None:
         inline_keyboard = InlineKeyboardMarkup([[]])
 
     if do_update:
-        update.callback_query.edit_message_text(message,
-                                                reply_markup=inline_keyboard)
+        update.callback_query.edit_message_text(message, reply_markup=inline_keyboard)
     else:
-        update.message.reply_text(message,
-                                  reply_markup=inline_keyboard)
+        update.message.reply_text(message, reply_markup=inline_keyboard)
 
 
-def send_transaction_and_keyboard(update, transaction, inline_keyboard=None,
-                                  do_update=False):
+def send_transaction_and_keyboard(update, transaction, inline_keyboard=None, do_update=False):
     if inline_keyboard is None:
         inline_keyboard = KeyboardFactory.make_main_inline_keyboard()
 
     formatted_transaction = format_transaction(transaction)
 
-    send_message_and_keyboard(update, formatted_transaction,
-                              inline_keyboard=inline_keyboard,
-                              do_update=do_update)
+    send_message_and_keyboard(
+        update, formatted_transaction, inline_keyboard=inline_keyboard, do_update=do_update
+    )
 
 
 def register_transaction(update, context):
@@ -362,8 +353,7 @@ def register_transaction(update, context):
     message_text = update.message.text
 
     try:
-        transaction = parse_message_transaction(message_text,
-                                                user_config)
+        transaction = parse_message_transaction(message_text, user_config)
     except ValueError:
         update.message.reply_text("Seems like the amount is missing.")
         return WAITING_TRANSACTION
@@ -411,8 +401,9 @@ def selecting_field(update, context):
 
     keyboard = KeyboardFactory.make_generic_inline_keyboard(button, labels)
 
-    send_transaction_and_keyboard(update, current_transaction,
-                                  inline_keyboard=keyboard, do_update=True)
+    send_transaction_and_keyboard(
+        update, current_transaction, inline_keyboard=keyboard, do_update=True
+    )
 
     update.callback_query.answer(msg)
 
@@ -438,8 +429,7 @@ def filling_data_button(update, context):
     else:
         update.callback_query.answer()
 
-    send_transaction_and_keyboard(update, current_transaction,
-                                  do_update=True)
+    send_transaction_and_keyboard(update, current_transaction, do_update=True)
 
     del context.user_data['field']
     return SELECTING_FIELD
@@ -534,8 +524,7 @@ def send_config(update, context):
 def edit_config(update, context):
     keyboard = KeyboardFactory.make_config_inline_keyboard()
 
-    send_message_and_keyboard(update, "Select setting to edit",
-                              inline_keyboard=keyboard)
+    send_message_and_keyboard(update, "Select setting to edit", inline_keyboard=keyboard)
 
     return SELECTING_CONFIG
 
@@ -545,9 +534,7 @@ def selecting_config(update, context):
 
     if button == 'cancel':
         clear_inline_keyboard(update)
-        update.callback_query.edit_message_text(
-            "You can continue writing transactions."
-        )
+        update.callback_query.edit_message_text("You can continue writing transactions.")
         update.callback_query.answer('Canceled!')
 
         return WAITING_TRANSACTION
@@ -555,8 +542,9 @@ def selecting_config(update, context):
     context.user_data['config_field'] = button
     keyboard = KeyboardFactory.make_cancel_button()
 
-    send_message_and_keyboard(update, f"Write a value for {button}",
-                              inline_keyboard=keyboard, do_update=True)
+    send_message_and_keyboard(
+        update, f"Write a value for {button}", inline_keyboard=keyboard, do_update=True
+    )
     update.callback_query.answer("Waiting for value")
 
     return FILLING_CONFIG
@@ -596,9 +584,7 @@ def cancel_config(update, context):
 
     if button == 'cancel':
         clear_inline_keyboard(update)
-        update.callback_query.edit_message_text(
-            "You can continue writing transactions."
-        )
+        update.callback_query.edit_message_text("You can continue writing transactions.")
         update.callback_query.answer('Canceled!')
 
         return WAITING_TRANSACTION
@@ -619,8 +605,7 @@ def fallback(update, context):
 
 def main():
     # Create a persistence object
-    persistence = PicklePersistence(filename='db.pickle',
-                                    store_chat_data=False)
+    persistence = PicklePersistence(filename='db.pickle', store_chat_data=False)
 
     # Create the Updater and pass it your bot's token
     updater = Updater(TOKEN, persistence=persistence, use_context=True)
@@ -630,8 +615,7 @@ def main():
 
     # Add conversation handler with the states
     start_handlers = [
-        MessageHandler(Filters.text, register_transaction,
-                       pass_user_data=True),
+        MessageHandler(Filters.text, register_transaction, pass_user_data=True),
         CommandHandler('start', start),
         CommandHandler('journal', send_journal, pass_user_data=True),
         CommandHandler('json', send_json, pass_user_data=True),
@@ -646,22 +630,20 @@ def main():
         entry_points=start_handlers,
         states={
             WAITING_TRANSACTION: start_handlers,
-            SELECTING_FIELD: [CallbackQueryHandler(selecting_field,
-                                                   pass_user_data=True)],
-            FILLING_DATA: [CallbackQueryHandler(filling_data_button,
-                                                pass_user_data=True),
-                           MessageHandler(Filters.text, filling_data_text,
-                                          pass_user_data=True)],
-            SELECTING_CONFIG: [CallbackQueryHandler(selecting_config,
-                                                    pass_user_data=True)],
-            FILLING_CONFIG: [MessageHandler(Filters.text, filling_config,
-                                            pass_user_data=True),
-                             CallbackQueryHandler(cancel_config,
-                                                  pass_user_data=True)],
+            SELECTING_FIELD: [CallbackQueryHandler(selecting_field, pass_user_data=True)],
+            FILLING_DATA: [
+                CallbackQueryHandler(filling_data_button, pass_user_data=True),
+                MessageHandler(Filters.text, filling_data_text, pass_user_data=True),
+            ],
+            SELECTING_CONFIG: [CallbackQueryHandler(selecting_config, pass_user_data=True)],
+            FILLING_CONFIG: [
+                MessageHandler(Filters.text, filling_config, pass_user_data=True),
+                CallbackQueryHandler(cancel_config, pass_user_data=True),
+            ],
         },
-        fallbacks=[MessageHandler(Filters.text, fallback,
-                                  pass_user_data=True)],
-        persistent=True, name='beanbot_conversation_handler'
+        fallbacks=[MessageHandler(Filters.text, fallback, pass_user_data=True)],
+        persistent=True,
+        name='beanbot_conversation_handler',
     )
 
     dp.add_handler(conv_handler)
