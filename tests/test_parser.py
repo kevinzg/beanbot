@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from freezegun import freeze_time
 
-from beanbot import parse_message, Message
+from beanbot import parse_message, Message, UserError
 
 
 invalid_messages = [
@@ -77,5 +77,5 @@ class TestParseMessage:
 
     def test_invalid_messages(self):
         for message in invalid_messages:
-            with pytest.raises(ValueError):
+            with pytest.raises(UserError):
                 parse_message(message)

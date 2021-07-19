@@ -68,6 +68,10 @@ class UserConfig:
 
 
 # Parser
+class UserError(Exception):
+    pass
+
+
 
 
 @dataclass
@@ -176,18 +180,18 @@ def parse_message(message: str) -> Message:
             *info, amount = message.split()
             info = ' '.join(info).strip()
             if not info:
-                raise ValueError("Info can't be empty")
+                raise UserError("Info can't be empty")
             return dict(
                 info=info,
                 amount=Decimal(amount),
             )
         except (ValueError, InvalidOperation) as ex:
-            raise ValueError from ex
+            raise UserError from ex
 
     if message.startswith('#'):
         info = message[1:].strip()
         if not info:
-            raise ValueError("Info can't be empty")
+            raise UserError("Info can't be empty")
         return Message('set_info', info)
 
     if message.startswith('+') or message.startswith('-'):
