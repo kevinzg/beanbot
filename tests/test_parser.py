@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from freezegun import freeze_time
 
 from beanbot import parse_message, Message
 
@@ -15,6 +16,7 @@ invalid_messages = [
 ]
 
 
+@freeze_time()
 class TestParseMessage:
     def test_parse_set_info(self):
         assert parse_message('#New Info') == Message('set_info', 'New Info')
