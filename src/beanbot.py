@@ -88,6 +88,7 @@ class Message:
 
     action: str  # new, add, set_info or fix_amount
     payload: Any
+    date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=pytz.utc))
 
 
 def parse_message(message: str) -> Message:
