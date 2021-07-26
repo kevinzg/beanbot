@@ -3,7 +3,9 @@ from decimal import Decimal
 import pytest
 from freezegun import freeze_time
 
-from beanbot import parse_message, Message, UserError
+from beanbot.errors import UserError
+from beanbot.models import Message
+from beanbot.parser import parse_message
 
 
 invalid_messages = [
