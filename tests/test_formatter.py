@@ -25,7 +25,7 @@ class TestFormatTransaction:
             == textwrap.dedent(
                 """
         Test
-        `  10.00` __Food__
+        `  10.00 USD `_Food_
         """
             ).strip()
         )
@@ -55,10 +55,10 @@ class TestFormatTransaction:
             == textwrap.dedent(
                 """
         Test
-        `  10.00` __Food__
-        `   2.00` __Candy__
+        `  10.00 USD `_Food_
+        `   2.00 USD `_Candy_
         `=======`
-        `- 12.00` Cash
+        `- 12.00 USD `Cash
         """
             ).strip()
         )
@@ -88,11 +88,11 @@ class TestFormatTransaction:
             == textwrap.dedent(
                 """
         Test
-        `  10.00` __Food__
-        `   2.00` __Candy__
+        `  10.00 USD `_Food_
+        `   2.00 USD `_Candy_
         `=======`
-        `- 10.00` Cash
-        `-  2.00` CC
+        `- 10.00 USD `Cash
+        `-  2.00 USD `CC
         """
             ).strip()
         )
@@ -122,11 +122,11 @@ class TestFormatTransaction:
             == textwrap.dedent(
                 """
         Test
-        `  10.00 USD` __Food__
-        `   2.00 EUR` __Candy__
+        `  10.00 USD `_Food_
+        `   2.00 EUR `_Candy_
         `=======`
-        `- 10.00 USD` Cash
-        `-  2.00 EUR` CC
+        `- 10.00 USD `Cash
+        `-  2.00 EUR `CC
         """
             ).strip()
         )
@@ -156,11 +156,11 @@ class TestFormatTransaction:
             == textwrap.dedent(
                 """
         Test
-        `  10.00 USD` __Food__
-        `   2.00 EUR` __Candy__
+        `  10.00 USD `_Food_
+        `   2.00 EUR `_Candy_
         `=======`
-        `- 10.00 USD` Cash
-        `-  2.00 EUR`
+        `- 10.00 USD `Cash
+        `-  2.00 EUR `
         """
             ).strip()
         )

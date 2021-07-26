@@ -10,24 +10,22 @@ from .models import Posting, Transaction
 def format_transaction(tx: Transaction) -> str:
     """Returns a string representation of a transaction suitable for displaying in Telegram."""
 
-    def format_debit(p: Posting, width: int, display_currency: bool) -> str:
-        return "`{amount:= {width}.2f}{currency}` __{info}__".format(
+    def format_debit(p: Posting, width: int) -> str:
+        return "`{amount:= {width}.2f} {currency} `_{info}_".format(
             width=width,
             amount=p.amount,
             info=p.debit_account,
-            currency=f' {p.currency}' if display_currency else '',
+            currency=p.currency,
         )
 
-    def format_credit(
-        info: str, accumulators: Dict[str, Decimal], width: int, display_currency: bool
-    ):
+    def format_credit(info: str, accumulators: Dict[str, Decimal], width: int):
         return '\n'.join(
-            "`{amount:= {width}.2f}{currency}` {info}".format(
+            "`{amount:= {width}.2f} {currency} `{info}".format(
                 width=width,
                 amount=amount,
                 info=info if i == 0 else '',
-                currency=f' {currency}' if display_currency else '',
-            ).strip()
+                currency=currency,
+            )
             for i, (currency, amount) in enumerate(accumulators.items())
         )
 
@@ -49,17 +47,10 @@ def format_transaction(tx: Transaction) -> str:
 
     amount_width += 1
 
-    display_currency = len(currencies) > 1
-    debits = '\n'.join(
-        format_debit(p, width=amount_width, display_currency=display_currency)
-        for p in tx.postings
-    )
+    debits = '\n'.join(format_debit(p, width=amount_width) for p in tx.postings)
     display_credits = len(tx.postings) > 1
     credits = (
-        '\n'.join(
-            format_credit(info, acc, width=amount_width, display_currency=display_currency)
-            for info, acc in credits.items()
-        )
+        '\n'.join(format_credit(info, acc, width=amount_width) for info, acc in credits.items())
         if len(tx.postings) > 1
         else ''
     )
