@@ -32,7 +32,7 @@ class Transaction:
 
 
 @dataclass
-class Message:
+class Event:
     """
     action can be:
     - new: New transaction

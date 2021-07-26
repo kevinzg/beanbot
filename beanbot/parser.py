@@ -1,14 +1,14 @@
 from decimal import Decimal, InvalidOperation
 
 from .errors import UserError
-from .models import Message
+from .models import Event
 
 
 # Parser
 
 
-def parse_message(message: str) -> Message:
-    """Transform a user message into a message that can be handled by the database."""
+def parse_message(message: str) -> Event:
+    """Transform a user message into an event that can be handled by the database."""
     message = message.strip()
 
     def inner_parse():
@@ -28,7 +28,7 @@ def parse_message(message: str) -> Message:
         info = message[1:].strip()
         if not info:
             raise UserError("Info can't be empty")
-        return Message('set_info', info)
+        return Event('set_info', info)
 
     if message.startswith('+') or message.startswith('-'):
         diff = None
@@ -37,22 +37,22 @@ def parse_message(message: str) -> Message:
         except (ValueError, InvalidOperation):
             pass
         if diff is not None:
-            return Message('fix_amount', diff)
+            return Event('fix_amount', diff)
 
     if message.startswith('+'):
         message = message[1:]
-        return Message('add', inner_parse())
+        return Event('add', inner_parse())
 
-    return Message('new', inner_parse())
+    return Event('new', inner_parse())
 
 
-def parse_keyboard_data(data: str) -> Message:
+def parse_keyboard_data(data: str) -> Event:
     key, index = data.rsplit('_', maxsplit=1)
     index = int(index)
 
     if key == 'cur':
-        return Message('set_currency', index)
+        return Event('set_currency', index)
     elif key == 'acc':
-        return Message('set_credit_account', index)
+        return Event('set_credit_account', index)
 
     raise ValueError(f'Invalid key ${key}')

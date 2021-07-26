@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytz
 
 from .errors import UserError
-from .models import Message, Posting, Transaction, UserConfig
+from .models import Event, Posting, Transaction, UserConfig
 
 
 # Database
@@ -18,7 +18,8 @@ class DB:
         """
         self.transactions: List[Transaction] = user_data.setdefault('transactions', [])
         self.config: UserConfig = user_data.setdefault('config', UserConfig())
-        self.last_message: Optional[datetime] = None
+
+        self.last_event: Optional[datetime] = None
 
     @property
     def last_transaction(self):
@@ -32,17 +33,18 @@ class DB:
             return self.last_transaction.postings[-1]
         raise UserError('There are no postings')
 
-    def process_message(self, message: Message) -> Tuple[Transaction, Optional[Posting]]:
-        # Convert `new` to `add` if the last message was received in the last 5 minutes
-        if message.action == 'new':
-            if self.last_message and (message.date - self.last_message) < timedelta(minutes=5):
-                message.action = 'add'
 
-        self.last_message = datetime.now(pytz.UTC)
+    def process_event(self, event: Event) -> Tuple[Transaction, Optional[Posting]]:
+        # Convert `new` to `add` if the last event was received in the last 5 minutes
+        if event.action == 'new':
+            if self.last_event and (event.date - self.last_event) < timedelta(minutes=5):
+                event.action = 'add'
+
+        self.last_event = datetime.now(pytz.UTC)
 
         # Convert `add` to `new` if there are no previous transactions
-        if message.action == 'add' and not self.transactions:
-            message.action = 'new'
+        if event.action == 'add' and not self.transactions:
+            event.action = 'new'
 
         tx = None
         posting = None
@@ -50,44 +52,44 @@ class DB:
         # Creates the posting for `new` and `add`.
         def make_posting():
             return Posting(
-                debit_account=message.payload['info'],
+                debit_account=event.payload['info'],
                 credit_account=self.config.credit_accounts[0],
-                amount=message.payload['amount'],
+                amount=event.payload['amount'],
                 currency=self.config.currencies[0],
             )
 
-        # Handle message
-        if message.action == 'new':
+        # Handle event
+        if event.action == 'new':
             posting = make_posting()
             tx = Transaction(
-                date=message.date.astimezone(pytz.timezone(self.config.timezone)),
-                info=message.payload['info'],
+                date=event.date.astimezone(pytz.timezone(self.config.timezone)),
+                info=event.payload['info'],
                 postings=[posting],
             )
             self.transactions.append(tx)
 
-        elif message.action == 'add':
+        elif event.action == 'add':
             posting = make_posting()
             tx = self.last_transaction
             tx.postings.append(posting)
 
-        elif message.action == 'set_info':
+        elif event.action == 'set_info':
             tx = self.last_transaction
-            tx.info = message.payload
+            tx.info = event.payload
 
-        elif message.action == 'fix_amount':
+        elif event.action == 'fix_amount':
             tx = self.last_transaction
             posting = self.last_posting
-            posting.amount += message.payload
+            posting.amount += event.payload
 
-        elif message.action == 'set_currency':
             tx = self.last_transaction
             posting = self.last_posting
-            posting.currency = self.config.currencies[message.payload]
+        elif event.action == 'set_currency':
+            posting.currency = self.config.currencies[event.payload]
 
-        elif message.action == 'set_credit_account':
+        elif event.action == 'set_credit_account':
             tx = self.last_transaction
             posting = self.last_posting
-            posting.credit_account = self.config.credit_accounts[message.payload]
+            posting.credit_account = self.config.credit_accounts[event.payload]
 
         return tx, posting
