@@ -89,3 +89,41 @@ class TestDB:
         )
 
         assert sample_db.last_posting.amount == Decimal(1.00)
+
+    def test_set_currency(self, sample_db: DB):
+        sample_db.process_message(
+            Message(
+                action='set_currency',
+                payload=0,
+            )
+        )
+
+        assert sample_db.last_posting.currency == 'USD'
+
+        sample_db.process_message(
+            Message(
+                action='set_currency',
+                payload=1,
+            )
+        )
+
+        assert sample_db.last_posting.currency == 'EUR'
+
+    def test_set_credit_account(self, sample_db: DB):
+        sample_db.process_message(
+            Message(
+                action='set_credit_account',
+                payload=1,
+            )
+        )
+
+        assert sample_db.last_posting.credit_account == 'Other'
+
+        sample_db.process_message(
+            Message(
+                action='set_credit_account',
+                payload=0,
+            )
+        )
+
+        assert sample_db.last_posting.credit_account == 'Cash'

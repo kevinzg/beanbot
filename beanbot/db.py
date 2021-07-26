@@ -80,4 +80,14 @@ class DB:
             posting = self.last_posting
             posting.amount += message.payload
 
+        elif message.action == 'set_currency':
+            tx = self.last_transaction
+            posting = self.last_posting
+            posting.currency = self.config.currencies[message.payload]
+
+        elif message.action == 'set_credit_account':
+            tx = self.last_transaction
+            posting = self.last_posting
+            posting.credit_account = self.config.credit_accounts[message.payload]
+
         return tx, posting
