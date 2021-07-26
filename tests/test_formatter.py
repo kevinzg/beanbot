@@ -1,9 +1,8 @@
-from decimal import Decimal
 import textwrap
+from decimal import Decimal
 
-import pytest
-
-from beanbot import format_transaction, Transaction, Posting
+from beanbot.formatter import format_transaction
+from beanbot.models import Posting, Transaction
 
 
 class TestFormatTransaction:
