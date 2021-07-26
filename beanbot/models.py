@@ -39,12 +39,16 @@ class Message:
     - add: Add posting to last transaction
     - set_info: Overwrite last transaction info
     - fix_amount: Increment last posting amount
+    - set_currency: Set currency of last posting
+    - set_credit_account: Set credit account of last posting
 
     payload type depends on the action:
     - new: dict with info and amount
     - add: same as new
     - set_info: string with new info
     - fix_amount: Decimal with the increase amount
+    - set_currency: index of currency in config
+    - set_credit_account: index of account in config
     """
 
     action: str  # new, add, set_info or fix_amount
