@@ -5,7 +5,7 @@ from freezegun import freeze_time
 
 from beanbot.errors import UserError
 from beanbot.models import Message
-from beanbot.parser import parse_message
+from beanbot.parser import parse_keyboard_data, parse_message
 
 
 invalid_messages = [
@@ -81,3 +81,20 @@ class TestParseMessage:
         for message in invalid_messages:
             with pytest.raises(UserError):
                 parse_message(message)
+
+
+@freeze_time()
+class TestParseKeyboardData:
+    def test_parse_set_currency(self):
+        assert parse_keyboard_data('cur_0') == Message('set_currency', 0)
+        assert parse_keyboard_data('cur_20') == Message('set_currency', 20)
+
+    def test_parse_set_credit_account(self):
+        assert parse_keyboard_data('acc_0') == Message('set_credit_account', 0)
+        assert parse_keyboard_data('acc_10') == Message('set_credit_account', 10)
+
+    def test_invalid_data(self):
+        invalid_data = ['asd_123', '123', 'not_a_number']
+        for data in invalid_data:
+            with pytest.raises(ValueError):
+                parse_keyboard_data(data)

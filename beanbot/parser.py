@@ -44,3 +44,15 @@ def parse_message(message: str) -> Message:
         return Message('add', inner_parse())
 
     return Message('new', inner_parse())
+
+
+def parse_keyboard_data(data: str) -> Message:
+    key, index = data.rsplit('_', maxsplit=1)
+    index = int(index)
+
+    if key == 'cur':
+        return Message('set_currency', index)
+    elif key == 'acc':
+        return Message('set_credit_account', index)
+
+    raise ValueError(f'Invalid key ${key}')
