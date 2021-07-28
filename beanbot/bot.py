@@ -168,19 +168,11 @@ EMPTY_KEYBOARD = InlineKeyboardMarkup([[]])
 def make_actions_keyboard(config: UserConfig, tx: Transaction, posting: Optional[Posting]):
     rows = []
 
-    # Basic buttons
-    rows.append(
-        [
-            InlineKeyboardButton('Delete', 'delete'),
-            InlineKeyboardButton('Done', 'done'),
-        ]
-    )
-
     if posting is not None:
         # Payment methods
         rows.append(
             [
-                InlineKeyboardButton(acc, f'acc_{idx}')
+                InlineKeyboardButton(acc, callback_data=f'acc_{idx}')
                 for idx, acc in enumerate(config.credit_accounts)
                 if acc != posting.credit_account
             ]
@@ -189,10 +181,18 @@ def make_actions_keyboard(config: UserConfig, tx: Transaction, posting: Optional
         # Currency
         rows.append(
             [
-                InlineKeyboardButton(cur, f'cur_{idx}')
+                InlineKeyboardButton(cur, callback_data=f'cur_{idx}')
                 for idx, cur in enumerate(config.currencies)
                 if cur != posting.currency
             ]
         )
+
+    # Basic buttons
+    rows.append(
+        [
+            InlineKeyboardButton('Delete', callback_data='delete'),
+            InlineKeyboardButton('Done', callback_data='done'),
+        ]
+    )
 
     return InlineKeyboardMarkup(rows)
