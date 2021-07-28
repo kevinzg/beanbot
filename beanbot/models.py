@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, List
+from enum import Enum, auto
+from typing import Any, List, Optional
 
 import pytz
 
@@ -31,17 +32,19 @@ class Transaction:
     postings: List[Posting] = field(default_factory=list)
 
 
+class Action(Enum):
+    NEW = auto()  # new transaction
+    ADD = auto()  # add posting to last transaction
+    SET_INFO = auto()  # Set last transaction info
+    FIX_AMOUNT = auto()  # Increase/decrease last posting amount
+    SET_CURRENCY = auto()  # Set currency of given posting
+    SET_CREDIT_ACCOUNT = auto()  # Set credict account of given posting
+    DELETE = auto()  # Delete posting or transaction
+
+
 @dataclass
 class Event:
     """
-    action can be:
-    - new: New transaction
-    - add: Add posting to last transaction
-    - set_info: Overwrite last transaction info
-    - fix_amount: Increment last posting amount
-    - set_currency: Set currency of last posting
-    - set_credit_account: Set credit account of last posting
-
     payload type depends on the action:
     - new: dict with info and amount
     - add: same as new
@@ -49,8 +52,10 @@ class Event:
     - fix_amount: Decimal with the increase amount
     - set_currency: index of currency in config
     - set_credit_account: index of account in config
+    - delete: None
     """
 
-    action: str  # new, add, set_info or fix_amount
+    action: Action
     payload: Any
     date: datetime = field(default_factory=lambda: datetime.now(tz=pytz.utc))
+    message_id: Optional[int] = None
