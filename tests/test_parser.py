@@ -93,6 +93,9 @@ class TestParseKeyboardData:
         assert parse_keyboard_data('acc_0') == Message('set_credit_account', 0)
         assert parse_keyboard_data('acc_10') == Message('set_credit_account', 10)
 
+    def test_parse_delete(self):
+        assert parse_keyboard_data('delete') == Message('delete', None)
+
     def test_invalid_data(self):
         invalid_data = ['asd_123', '123', 'not_a_number']
         for data in invalid_data:
