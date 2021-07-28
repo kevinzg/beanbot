@@ -5,6 +5,9 @@ description = "Telegram bot for Beancount"
 authors = ["Kevin Zúñiga <kevin.zun@gmail.com>"]
 license = "MIT"
 
+[tool.poetry.scripts]
+beanbot = 'beanbot.bot:run'
+
 [tool.poetry.dependencies]
 python = "^3.9"
 python-telegram-bot = "^13.7"
