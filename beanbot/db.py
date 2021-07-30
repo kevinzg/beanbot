@@ -23,8 +23,7 @@ class DB:
         self.message_id_index: Dict[int, Tuple[int, Optional[int]]] = user_data.setdefault(
             'message_id_index', {}
         )
-
-        self.last_event: Optional[datetime] = None
+        self.vars = user_data.setdefault('vars', {})
 
     @property
     def last_entries(self) -> Tuple[Transaction, Posting]:
@@ -41,7 +40,7 @@ class DB:
         # TODO: Could be binary search
         tx = next(filter(lambda v: v.id == index[0], self.transactions), None)
         if tx is None:
-            raise UserError(f'Transaction for message {message_id} deleted')
+            raise UserError(f'No transaction for message {message_id}')
 
         posting = index[1] and next(filter(lambda v: v.id == index[1], tx.postings), None)
         return tx, posting
@@ -52,7 +51,7 @@ class DB:
             if self.last_event and (event.date - self.last_event) < timedelta(minutes=5):
                 event.action = Action.ADD
 
-        self.last_event = datetime.now(pytz.UTC)
+        self.last_event = event.date
 
         # Convert `add` to `new` if there are no previous transactions
         if event.action == Action.ADD and not self.transactions:
@@ -84,7 +83,7 @@ class DB:
 
         tx, posting = None, None
 
-        # Handle event (TODO: Add action DONE)
+        # Handle events
         if event.action == Action.NEW:
             tx = create_new_transaction()
             posting = create_new_posting(tx)
@@ -112,7 +111,7 @@ class DB:
         elif event.action == Action.DELETE:
             tx, posting = self.get_entries_by_message_id(event.message_id)
             if posting is None:
-                raise UserError(f'Posting for message {event.message_id} deleted')
+                raise UserError(f'Not posting for message {event.message_id}')
             tx.postings.remove(posting)
             if not tx.postings:
                 # TODO: Clear the index
@@ -127,3 +126,11 @@ class DB:
         assert message_id is not None
         assert tx.id is not None
         self.message_id_index[message_id] = (tx.id, posting and posting.id)
+
+    @property
+    def last_event(self) -> Optional[datetime]:
+        return self.vars.get('last_event')
+
+    @last_event.setter
+    def last_event(self, value: datetime):
+        self.vars['last_event'] = value
