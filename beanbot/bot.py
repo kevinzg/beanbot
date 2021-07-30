@@ -1,6 +1,11 @@
+import codecs
+import json
 import logging
 import os
 import traceback
+from dataclasses import asdict
+from datetime import datetime
+from io import BytesIO
 from typing import Optional
 
 import telegram
@@ -55,6 +60,8 @@ def run():
 
     # Add message handlers
     dp.add_handler(CommandHandler('start', handle_start_command))
+    dp.add_handler(CommandHandler('json', handle_json_command))
+    dp.add_handler(CommandHandler('clear', handle_clear_command))
     dp.add_handler(MessageHandler(Filters.text, handle_text_message))
     dp.add_handler(CallbackQueryHandler(handle_inline_button))
 
@@ -70,13 +77,45 @@ def run():
     updater.idle()
 
 
-# Messages handlers
+# Command handlers
 
 
 def handle_start_command(update: telegram.Update, context: telegram.ext.CallbackContext):
     update.message.reply_text(
         "Hi! I'm Beanbot. I can help you keep track of your financial transactions.",
     )
+
+
+def handle_json_command(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db = database.DB(context.user_data)
+
+    date = datetime.now(tz=db.config.tzinfo).strftime('%Y-%m-%d-%H-%M-%S')
+    filename = f'beanbot-{date}.json'
+
+    def transform(value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        else:
+            return f'{value}'
+
+    data = list(map(asdict, db.transactions))
+
+    StreamWriter = codecs.getwriter('utf-8')
+    file = BytesIO()
+    json.dump(data, StreamWriter(file), default=transform, indent=4)
+
+    file.seek(0)
+    update.message.reply_document(file, filename=filename)
+
+
+def handle_clear_command(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db = database.DB(context.user_data)
+    db.clear()
+
+    update.message.reply_text('Cleared!')
+
+
+# Message handlers
 
 
 def handle_text_message(update: telegram.Update, context: telegram.ext.CallbackContext):
