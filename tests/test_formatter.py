@@ -8,10 +8,12 @@ from beanbot.models import Posting, Transaction
 class TestFormatTransaction:
     def test_format_simple_transaction(self):
         tx = Transaction(
+            id=1,
             date=None,
             info='Test',
             postings=[
                 Posting(
+                    id=1,
                     debit_account='Food',
                     credit_account='Cash',
                     amount=Decimal(10),
@@ -32,16 +34,19 @@ class TestFormatTransaction:
 
     def test_format_transaction_two_postings(self):
         tx = Transaction(
+            id=1,
             date=None,
             info='Test',
             postings=[
                 Posting(
+                    id=1,
                     debit_account='Food',
                     credit_account='Cash',
                     amount=Decimal(10),
                     currency='USD',
                 ),
                 Posting(
+                    id=2,
                     debit_account='Candy',
                     credit_account='Cash',
                     amount=Decimal(2),
@@ -65,16 +70,19 @@ class TestFormatTransaction:
 
     def test_format_transaction_different_credit_account(self):
         tx = Transaction(
+            id=1,
             date=None,
             info='Test',
             postings=[
                 Posting(
+                    id=1,
                     debit_account='Food',
                     credit_account='Cash',
                     amount=Decimal(10),
                     currency='USD',
                 ),
                 Posting(
+                    id=2,
                     debit_account='Candy',
                     credit_account='CC',
                     amount=Decimal(2),
@@ -99,16 +107,19 @@ class TestFormatTransaction:
 
     def test_format_transaction_different_credit_accounts_and_currency(self):
         tx = Transaction(
+            id=1,
             date=None,
             info='Test',
             postings=[
                 Posting(
+                    id=1,
                     debit_account='Food',
                     credit_account='Cash',
                     amount=Decimal(10),
                     currency='USD',
                 ),
                 Posting(
+                    id=2,
                     debit_account='Candy',
                     credit_account='CC',
                     amount=Decimal(2),
@@ -133,16 +144,19 @@ class TestFormatTransaction:
 
     def test_format_transaction_postings_different_currency(self):
         tx = Transaction(
+            id=1,
             date=None,
             info='Test',
             postings=[
                 Posting(
+                    id=1,
                     debit_account='Food',
                     credit_account='Cash',
                     amount=Decimal(10),
                     currency='USD',
                 ),
                 Posting(
+                    id=2,
                     debit_account='Candy',
                     credit_account='Cash',
                     amount=Decimal(2),
