@@ -18,7 +18,7 @@ from telegram.ext import (
 from . import db as database
 from . import formatter, parser
 from .errors import UserError
-from .models import Posting, Transaction, UserConfig
+from .models import Action, Posting, Transaction, UserConfig
 
 
 # Config
@@ -82,7 +82,6 @@ def handle_start_command(update: telegram.Update, context: telegram.ext.Callback
 def handle_text_message(update: telegram.Update, context: telegram.ext.CallbackContext):
     try:
         event = parser.parse_message(update.message.text)
-        event.message_id = update.message.message_id
     except UserError as ex:
         update.message.reply_text(str(ex))
         return
@@ -94,26 +93,25 @@ def handle_text_message(update: telegram.Update, context: telegram.ext.CallbackC
     tx_string = formatter.format_transaction(tx)
     keyboard = make_actions_keyboard(db.config, tx, posting)
 
-    update.message.reply_text(
+    message = update.message.reply_text(
         tx_string, parse_mode=telegram.ParseMode.MARKDOWN_V2, reply_markup=keyboard
     )
 
+    db.update_message_index(message.message_id, tx, posting)
+
 
 def handle_inline_button(update: telegram.Update, context: telegram.ext.CallbackContext):
-    keyboard_data = update.callback_query.data
-
-    if keyboard_data == 'done':
-        update.callback_query.edit_message_reply_markup()
-        return
-
     event = parser.parse_keyboard_data(update.callback_query.data)
     event.message_id = update.callback_query.message.message_id
 
     db = database.DB(context.user_data)
     tx, posting = db.process_event(event)
 
-    if event.action == 'delete':
-        message = f'{posting.debit_account} {posting.amount}~' if posting is not None else tx.info
+    if event.action == Action.COMMIT:
+        update.callback_query.edit_message_reply_markup(EMPTY_KEYBOARD)
+        return
+    elif event.action == Action.DELETE:
+        message = f'{posting.debit_account} {posting.amount}' if posting is not None else tx.info
         update.callback_query.edit_message_text(
             f'~{message}~',
             parse_mode=telegram.ParseMode.MARKDOWN_V2,
@@ -139,7 +137,7 @@ def error_handler(update: telegram.Update, context: telegram.ext.CallbackContext
         if update.message is not None:
             update.message.reply_text(message)
         elif update.callback_query is not None:
-            update.callback_query.reply_text(message)
+            update.callback_query.message.reply_text(message)
         else:
             raise Exception('Update has no message nor callback query')
 
@@ -153,9 +151,7 @@ def error_handler(update: telegram.Update, context: telegram.ext.CallbackContext
         error,
         error.__traceback__,
     )
-    logger.error(
-        'Update "%s" caused error "%s".\nTraceback:\n%s', update, context.error, ''.join(trace)
-    )
+    logger.error('Update "%s" caused error "%s".\n%s', update, context.error, ''.join(trace))
     reply_text(f'Internal error: {error}')
 
 
@@ -191,7 +187,7 @@ def make_actions_keyboard(config: UserConfig, tx: Transaction, posting: Optional
     rows.append(
         [
             InlineKeyboardButton('Delete', callback_data='delete'),
-            InlineKeyboardButton('Done', callback_data='done'),
+            InlineKeyboardButton('Done', callback_data='commit'),
         ]
     )
 
