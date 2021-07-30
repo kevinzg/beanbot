@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from .errors import UserError
-from .models import Event
+from .models import Action, Event
 
 
 # Parser
@@ -28,7 +28,7 @@ def parse_message(message: str) -> Event:
         info = message[1:].strip()
         if not info:
             raise UserError("Info can't be empty")
-        return Event('set_info', info)
+        return Event(Action.SET_INFO, info)
 
     if message.startswith('+') or message.startswith('-'):
         diff = None
@@ -37,25 +37,25 @@ def parse_message(message: str) -> Event:
         except (ValueError, InvalidOperation):
             pass
         if diff is not None:
-            return Event('fix_amount', diff)
+            return Event(Action.FIX_AMOUNT, diff)
 
     if message.startswith('+'):
         message = message[1:]
-        return Event('add', inner_parse())
+        return Event(Action.ADD, inner_parse())
 
-    return Event('new', inner_parse())
+    return Event(Action.NEW, inner_parse())
 
 
 def parse_keyboard_data(data: str) -> Event:
     if data == 'delete':
-        return Event('delete')
+        return Event(Action.DELETE, None)
 
     key, index = data.rsplit('_', maxsplit=1)
     index = int(index)
 
     if key == 'cur':
-        return Event('set_currency', index)
+        return Event(Action.SET_CURRENCY, index)
     elif key == 'acc':
-        return Event('set_credit_account', index)
+        return Event(Action.SET_CREDIT_ACCOUNT, index)
 
     raise ValueError(f'Invalid key ${key}')
