@@ -122,6 +122,11 @@ class DB:
 
         return tx, posting
 
+    def clear(self):
+        self.transactions.clear()
+        self.message_id_index.clear()
+        self.last_event = None
+
     def update_message_index(self, message_id: int, tx: Transaction, posting: Posting):
         assert message_id is not None
         assert tx.id is not None
