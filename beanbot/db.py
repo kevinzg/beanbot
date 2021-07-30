@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytz
 
 from .errors import UserError
-from .models import Event, Posting, Transaction, UserConfig
+from .models import Action, Event, Posting, Transaction, UserConfig
 
 
 # Database
@@ -19,77 +19,111 @@ class DB:
         self.transactions: List[Transaction] = user_data.setdefault('transactions', [])
         self.config: UserConfig = user_data.setdefault('config', UserConfig())
 
+        self.next_ids = user_data.setdefault('next_ids', dict(transaction=1, posting=1))
+        self.message_id_index: Dict[int, Tuple[int, Optional[int]]] = user_data.setdefault(
+            'message_id_index', {}
+        )
+
         self.last_event: Optional[datetime] = None
 
     @property
-    def last_transaction(self):
+    def last_entries(self) -> Tuple[Transaction, Posting]:
         if self.transactions:
-            return self.transactions[-1]
+            tx = self.transactions[-1]
+            return tx, tx.postings[-1]
         raise UserError('There are no transactions')
 
-    @property
-    def last_posting(self):
-        if self.last_transaction.postings:
-            return self.last_transaction.postings[-1]
-        raise UserError('There are no postings')
+    def get_entries_by_message_id(self, message_id: int) -> Tuple[Transaction, Optional[Posting]]:
+        index = self.message_id_index.get(message_id)
+        if index is None:
+            raise UserError(f'No transaction for message {message_id}')
 
+        # TODO: Could be binary search
+        tx = next(filter(lambda v: v.id == index[0], self.transactions), None)
+        if tx is None:
+            raise UserError(f'Transaction for message {message_id} deleted')
+
+        posting = index[1] and next(filter(lambda v: v.id == index[1], tx.postings), None)
+        return tx, posting
 
     def process_event(self, event: Event) -> Tuple[Transaction, Optional[Posting]]:
         # Convert `new` to `add` if the last event was received in the last 5 minutes
-        if event.action == 'new':
+        if event.action == Action.NEW:
             if self.last_event and (event.date - self.last_event) < timedelta(minutes=5):
-                event.action = 'add'
+                event.action = Action.ADD
 
         self.last_event = datetime.now(pytz.UTC)
 
         # Convert `add` to `new` if there are no previous transactions
-        if event.action == 'add' and not self.transactions:
-            event.action = 'new'
+        if event.action == Action.ADD and not self.transactions:
+            event.action = Action.NEW
 
-        tx = None
-        posting = None
+        # Helper functions
+        def create_new_transaction() -> Transaction:
+            tx = Transaction(
+                id=self.next_ids['transaction'],
+                date=event.date.astimezone(pytz.timezone(self.config.timezone)),
+                info=event.payload['info'],
+                postings=[],
+            )
+            self.next_ids['transaction'] += 1
+            self.transactions.append(tx)
+            return tx
 
-        # Creates the posting for `new` and `add`.
-        def make_posting():
-            return Posting(
+        def create_new_posting(tx: Transaction) -> Posting:
+            posting = Posting(
+                id=self.next_ids['posting'],
                 debit_account=event.payload['info'],
                 credit_account=self.config.credit_accounts[0],
                 amount=event.payload['amount'],
                 currency=self.config.currencies[0],
             )
-
-        # Handle event
-        if event.action == 'new':
-            posting = make_posting()
-            tx = Transaction(
-                date=event.date.astimezone(pytz.timezone(self.config.timezone)),
-                info=event.payload['info'],
-                postings=[posting],
-            )
-            self.transactions.append(tx)
-
-        elif event.action == 'add':
-            posting = make_posting()
-            tx = self.last_transaction
+            self.next_ids['posting'] += 1
             tx.postings.append(posting)
+            return posting
 
-        elif event.action == 'set_info':
-            tx = self.last_transaction
+        tx, posting = None, None
+
+        # Handle event (TODO: Add action DONE)
+        if event.action == Action.NEW:
+            tx = create_new_transaction()
+            posting = create_new_posting(tx)
+
+        elif event.action == Action.ADD:
+            tx, _ = self.last_entries
+            posting = create_new_posting(tx)
+
+        elif event.action == Action.SET_INFO:
+            tx, _ = self.last_entries
             tx.info = event.payload
 
-        elif event.action == 'fix_amount':
-            tx = self.last_transaction
-            posting = self.last_posting
+        elif event.action == Action.FIX_AMOUNT:
+            tx, posting = self.last_entries
             posting.amount += event.payload
 
-            tx = self.last_transaction
-            posting = self.last_posting
-        elif event.action == 'set_currency':
+        elif event.action == Action.SET_CURRENCY:
+            tx, posting = self.get_entries_by_message_id(event.message_id)
             posting.currency = self.config.currencies[event.payload]
 
-        elif event.action == 'set_credit_account':
-            tx = self.last_transaction
-            posting = self.last_posting
+        elif event.action == Action.SET_CREDIT_ACCOUNT:
+            tx, posting = self.get_entries_by_message_id(event.message_id)
             posting.credit_account = self.config.credit_accounts[event.payload]
 
+        elif event.action == Action.DELETE:
+            tx, posting = self.get_entries_by_message_id(event.message_id)
+            if posting is None:
+                raise UserError(f'Posting for message {event.message_id} deleted')
+            tx.postings.remove(posting)
+            if not tx.postings:
+                # TODO: Clear the index
+                self.transactions.remove(tx)
+
+        elif event.action == Action.COMMIT:
+            self.last_event = None
+
         return tx, posting
+
+    def update_message_index(self, message_id: int, tx: Transaction, posting: Posting):
+        assert message_id is not None
+        assert tx.id is not None
+        self.message_id_index[message_id] = (tx.id, posting and posting.id)
