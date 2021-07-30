@@ -49,6 +49,8 @@ def parse_message(message: str) -> Event:
 def parse_keyboard_data(data: str) -> Event:
     if data == 'delete':
         return Event(Action.DELETE, None)
+    elif data == 'commit':
+        return Event(Action.COMMIT, None)
 
     key, index = data.rsplit('_', maxsplit=1)
     index = int(index)
