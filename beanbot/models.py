@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, tzinfo
 from decimal import Decimal
 from enum import Enum, auto
 from typing import Any, List, Optional
@@ -15,6 +15,10 @@ class UserConfig:
     timezone: str = 'UTC'
     currencies: List[str] = field(default_factory=lambda: ['USD', 'EUR'])
     credit_accounts: List[str] = field(default_factory=lambda: ['Cash', 'CC', 'Other'])
+
+    @property
+    def tzinfo(self) -> tzinfo:
+        return pytz.timezone(self.timezone)
 
 
 @dataclass

@@ -61,7 +61,7 @@ class DB:
         def create_new_transaction() -> Transaction:
             tx = Transaction(
                 id=self.next_ids['transaction'],
-                date=event.date.astimezone(pytz.timezone(self.config.timezone)),
+                date=event.date.astimezone(self.config.tzinfo),
                 info=event.payload['info'],
                 postings=[],
             )
