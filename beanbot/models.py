@@ -19,6 +19,7 @@ class UserConfig:
 
 @dataclass
 class Posting:
+    id: Optional[int] = None
     debit_account: str  # i.e. money is going into this account, usually an Expense
     credit_account: str  # i.e. money is going out of this account, usually an Asset
     amount: Decimal
@@ -27,6 +28,7 @@ class Posting:
 
 @dataclass
 class Transaction:
+    id: Optional[int] = None
     date: datetime
     info: str
     postings: List[Posting] = field(default_factory=list)
