@@ -42,6 +42,7 @@ class Action(Enum):
     SET_CURRENCY = auto()  # Set currency of given posting
     SET_CREDIT_ACCOUNT = auto()  # Set credict account of given posting
     DELETE = auto()  # Delete posting or transaction
+    COMMIT = auto()  # Commit transaction, don't allow modifications
 
 
 @dataclass
