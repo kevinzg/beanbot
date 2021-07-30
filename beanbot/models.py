@@ -56,6 +56,7 @@ class Event:
     - set_currency: index of currency in config
     - set_credit_account: index of account in config
     - delete: None
+    - commit: None
     """
 
     action: Action
