@@ -2,12 +2,14 @@ import codecs
 import json
 import logging
 import os
+import textwrap
 import traceback
 from dataclasses import asdict
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
 
+import pytz
 import telegram
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -62,6 +64,7 @@ def run():
     dp.add_handler(CommandHandler('start', handle_start_command))
     dp.add_handler(CommandHandler('json', handle_json_command))
     dp.add_handler(CommandHandler('clear', handle_clear_command))
+    dp.add_handler(CommandHandler('config', handle_config_command))
     dp.add_handler(MessageHandler(Filters.text, handle_text_message))
     dp.add_handler(CallbackQueryHandler(handle_inline_button))
 
@@ -113,6 +116,57 @@ def handle_clear_command(update: telegram.Update, context: telegram.ext.Callback
     db.clear()
 
     update.message.reply_text('Cleared!')
+
+
+def handle_config_command(update: telegram.Update, context: telegram.ext.CallbackContext):
+    msg = update.message or update.edited_message
+
+    if not context.args:
+        msg.reply_text(
+            textwrap.dedent(
+                """\
+            /config timezone <tz>
+            /config currencies <cur 1> [<currencies>]
+            /config accounts <acc 1> [<accounts>]
+            """
+            )
+        )
+        return
+
+    key, *values = context.args
+
+    if key not in ['timezone', 'currencies', 'accounts']:
+        raise UserError(f'Unknown key {key}')
+
+    if key == 'accounts':
+        key = 'credit_accounts'
+
+    db = database.DB(context.user_data)
+
+    if not values:
+        value = ''
+        if key == 'timezone':
+            value = db.config.timezone
+        else:
+            value = '\n'.join(getattr(db.config, key))
+        msg.reply_text(value)
+        return
+
+    if key == 'timezone':
+        tz = values[0]
+        try:
+            pytz.timezone(tz)
+        except pytz.UnknownTimeZoneError:
+            raise UserError(f'Invalid IANA timezone: {tz}')
+        db.config.timezone = tz
+    else:  # lists
+        if len(values) > 4:
+            raise UserError('Max values allowed are 4')
+        if not all(v.strip() for v in values):
+            raise UserError('There are invalid values')
+        setattr(db.config, key, values)
+
+    msg.reply_text('Updated!')
 
 
 # Message handlers
@@ -173,12 +227,8 @@ def error_handler(update: telegram.Update, context: telegram.ext.CallbackContext
     error = context.error
 
     def reply_text(message: str):
-        if update.message is not None:
-            update.message.reply_text(message)
-        elif update.callback_query is not None:
-            update.callback_query.message.reply_text(message)
-        else:
-            raise Exception('Update has no message nor callback query')
+        msg = update.message or update.callback_query or update.edited_message
+        msg.reply_text(message)
 
     if isinstance(error, UserError):
         logger.warning('Update "%s" caused user error "%s".', update, error)
