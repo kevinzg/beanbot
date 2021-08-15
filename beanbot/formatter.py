@@ -1,6 +1,8 @@
 from decimal import Decimal
 from typing import Dict
 
+from telegram.utils import helpers
+
 from .models import Posting, Transaction
 
 
@@ -14,7 +16,7 @@ def format_transaction(tx: Transaction) -> str:
         return "`{amount:= {width}.2f} {currency} `_{info}_".format(
             width=width,
             amount=p.amount,
-            info=p.debit_account,
+            info=escape_markdown(p.debit_account),
             currency=p.currency,
         )
 
@@ -23,7 +25,7 @@ def format_transaction(tx: Transaction) -> str:
             "`{amount:= {width}.2f} {currency} `{info}".format(
                 width=width,
                 amount=amount,
-                info=info if i == 0 else '',
+                info=escape_markdown(info) if i == 0 else '',
                 currency=currency,
             )
             for i, (currency, amount) in enumerate(accumulators.items())
@@ -63,9 +65,13 @@ def format_transaction(tx: Transaction) -> str:
         '{sep}\n'
         '{credits}\n'
     ).format(
-        header=tx.info,
+        header=escape_markdown(tx.info),
         debits=debits,
         sep=sep,
         credits=credits,
     ).strip()
     # fmt: on
+
+
+def escape_markdown(s: str) -> str:
+    return helpers.escape_markdown(s, version=2)

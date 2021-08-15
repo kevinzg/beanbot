@@ -178,3 +178,29 @@ class TestFormatTransaction:
         """
             ).strip()
         )
+
+    def test_escape_markdown(self):
+        tx = Transaction(
+            id=1,
+            date=None,
+            info='Test . _ * `',
+            postings=[
+                Posting(
+                    id=1,
+                    debit_account='Food.',
+                    credit_account='Cash',
+                    amount=Decimal(10),
+                    currency='USD',
+                )
+            ],
+        )
+
+        assert (
+            format_transaction(tx)
+            == textwrap.dedent(
+                """
+        Test \\. \\_ \\* \\`
+        `  10.00 USD `_Food\\._
+        """
+            ).strip()
+        )

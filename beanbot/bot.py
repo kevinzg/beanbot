@@ -204,7 +204,9 @@ def handle_inline_button(update: telegram.Update, context: telegram.ext.Callback
         update.callback_query.edit_message_reply_markup(EMPTY_KEYBOARD)
         return
     elif event.action == Action.DELETE:
-        message = f'{posting.debit_account} {posting.amount}' if posting is not None else tx.info
+        message = formatter.escape_markdown(
+            f'{posting.debit_account} {posting.amount}' if posting is not None else tx.info
+        )
         update.callback_query.edit_message_text(
             f'~{message}~',
             parse_mode=telegram.ParseMode.MARKDOWN_V2,
