@@ -231,8 +231,7 @@ def error_handler(update: telegram.Update, context: telegram.ext.CallbackContext
     error = context.error
 
     def reply_text(message: str):
-        msg = update.message or update.callback_query or update.edited_message
-        msg.reply_text(message)
+        update.effective_message.reply_text(message)
 
     if isinstance(error, UserError):
         logger.warning('Update "%s" caused user error "%s".', update, error)
