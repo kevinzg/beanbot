@@ -183,7 +183,7 @@ def handle_text_message(update: telegram.Update, context: telegram.ext.CallbackC
     db = database.DB(context.user_data)
     tx, posting = db.process_event(event)
 
-    tx_string = formatter.format_transaction(tx)
+    tx_string = formatter.format_transaction(tx, default_currency=db.config.currencies[0])
     keyboard = make_actions_keyboard(db.config, tx, posting)
 
     message = update.message.reply_text(
@@ -214,7 +214,7 @@ def handle_inline_button(update: telegram.Update, context: telegram.ext.Callback
         )
         return
 
-    tx_string = formatter.format_transaction(tx)
+    tx_string = formatter.format_transaction(tx, default_currency=db.config.currencies[0])
     keyboard = make_actions_keyboard(db.config, tx, posting)
 
     update.callback_query.edit_message_text(
