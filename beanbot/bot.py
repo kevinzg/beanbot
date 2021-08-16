@@ -21,6 +21,7 @@ from telegram.ext import (
     PicklePersistence,
     Updater,
 )
+from telegram.utils import helpers
 
 from . import db as database
 from . import formatter, parser
@@ -204,8 +205,9 @@ def handle_inline_button(update: telegram.Update, context: telegram.ext.Callback
         update.callback_query.edit_message_reply_markup(EMPTY_KEYBOARD)
         return
     elif event.action == Action.DELETE:
-        message = formatter.escape_markdown(
-            f'{posting.debit_account} {posting.amount}' if posting is not None else tx.info
+        message = helpers.escape_markdown(
+            f'{posting.debit_account} {posting.amount}' if posting is not None else tx.info,
+            version=2,
         )
         update.callback_query.edit_message_text(
             f'~{message}~',
