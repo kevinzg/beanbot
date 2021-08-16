@@ -62,7 +62,7 @@ class DB:
             tx = Transaction(
                 id=self.next_ids['transaction'],
                 date=event.date.astimezone(self.config.tzinfo),
-                info=event.payload['info'],
+                info='',
                 postings=[],
             )
             self.next_ids['transaction'] += 1

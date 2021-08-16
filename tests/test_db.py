@@ -44,7 +44,7 @@ class TestDB:
         assert tx == Transaction(
             id=2,
             date=datetime.now(pytz.timezone(sample_db.config.timezone)),
-            info='test',
+            info='',
             postings=[Posting(2, 'test', 'Cash', Decimal('12.00'), 'USD')],
         )
 
