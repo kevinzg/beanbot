@@ -22,7 +22,7 @@ def parse_message(message: str) -> Event:
                 amount=Decimal(amount),
             )
         except (ValueError, InvalidOperation) as ex:
-            raise UserError from ex
+            raise UserError("Invalid amount") from ex
 
     if message.startswith('#'):
         info = message[1:].strip()
