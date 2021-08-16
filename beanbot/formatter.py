@@ -9,24 +9,26 @@ from .models import Posting, Transaction
 # Formatter
 
 
-def format_transaction(tx: Transaction) -> str:
+def format_transaction(tx: Transaction, default_currency=None) -> str:
     """Returns a string representation of a transaction suitable for displaying in Telegram."""
 
-    def format_debit(p: Posting, width: int) -> str:
-        return "`{amount:= {width}.2f} {currency} `_{info}_".format(
+    def format_debit(p: Posting, width: int, display_currency: bool) -> str:
+        return "`{amount:= {width}.2f} {currency}`_{info}_".format(
             width=width,
             amount=p.amount,
             info=escape_markdown(p.debit_account),
-            currency=p.currency,
+            currency=f'{escape_markdown(p.currency)} ' if display_currency else '',
         )
 
-    def format_credit(info: str, accumulators: Dict[str, Decimal], width: int):
+    def format_credit(
+        info: str, accumulators: Dict[str, Decimal], width: int, display_currency: bool
+    ):
         return '\n'.join(
-            "`{amount:= {width}.2f} {currency} `{info}".format(
+            "`{amount:= {width}.2f} {currency}`{info}".format(
                 width=width,
                 amount=amount,
                 info=escape_markdown(info) if i == 0 else '',
-                currency=currency,
+                currency=f'{escape_markdown(currency)} ' if display_currency else '',
             )
             for i, (currency, amount) in enumerate(accumulators.items())
         )
@@ -48,24 +50,28 @@ def format_transaction(tx: Transaction) -> str:
         amount_width = max(amount_width, len(f"{accumulator[p.currency]:.2f}"))
 
     amount_width += 1
-
-    debits = '\n'.join(format_debit(p, width=amount_width) for p in tx.postings)
-    display_credits = len(tx.postings) > 1
-    credits = (
-        '\n'.join(format_credit(info, acc, width=amount_width) for info, acc in credits.items())
-        if len(tx.postings) > 1
-        else ''
+    display_currency = (
+        len(currencies) > 1 or default_currency is None or default_currency not in currencies
     )
-    sep = f"`{'=' * (amount_width)}`" if display_credits else ''
+
+    debits = '\n'.join(
+        format_debit(p, width=amount_width, display_currency=display_currency)
+        for p in tx.postings
+    )
+    credits = '\n'.join(
+        format_credit(info, acc, width=amount_width, display_currency=display_currency)
+        for info, acc in credits.items()
+    )
+    sep = f"`{'=' * (amount_width)}`"
 
     # fmt: off
     return (
-        '{header}\n'
+        '{header}'
         '{debits}\n'
         '{sep}\n'
         '{credits}\n'
     ).format(
-        header=escape_markdown(tx.info),
+        header=f'{escape_markdown(tx.info)}\n' if tx.info else '',
         debits=debits,
         sep=sep,
         credits=credits,
